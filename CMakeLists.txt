@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.6)
-project(minedotc_root CXX)
+project(minedotcpp_root CXX)
 
-add_subdirectory(src/minedotc)
-add_subdirectory(src/minedotc_testcli)
+add_subdirectory(src/minedotcpp)
+add_subdirectory(src/minedotcpp_testcli)
