@@ -4,15 +4,15 @@
 
 using namespace minedotcpp::common;
 
-map::map(unsigned short width, unsigned short height, int remaining_mine_count)
+map::map(int width, int height, int remaining_mine_count)
 {
 	this->width = width;
 	this->height = height;
 	this->remaining_mine_count = remaining_mine_count;
 	cells = new cell[width*height];
-	for (unsigned short i = 0; i < width; ++i)
+	for (int i = 0; i < width; ++i)
 	{
-		for (unsigned short j = 0; j < height; ++j)
+		for (int j = 0; j < height; ++j)
 		{
 			auto cell = cell_get(i, j);
 			cell->pt.x = i;
@@ -31,7 +31,7 @@ map::~map()
 	}
 }
 
-inline cell* map::cell_get(unsigned short x, unsigned short y)
+inline cell* map::cell_get(int x, int y)
 {
 	return &cells[x*height + y];
 }
@@ -41,7 +41,7 @@ inline cell* map::cell_get(point pt)
 	return cell_get(pt.x, pt.y);
 }
 
-cell* map::cell_try_get(unsigned short x, unsigned short y)
+cell* map::cell_try_get(int x, int y)
 {
 	if(x >= 0 && y >= 0 && x < width && y < height)
 	{
@@ -59,7 +59,7 @@ inline cell* map::cell_try_get(point pt)
 	return cell_try_get(pt.x, pt.y);
 }
 
-inline bool map::cell_exists(unsigned short x, unsigned short y)
+inline bool map::cell_exists(int x, int y)
 {
 	return x >= 0 && y >= 0 && x < width && y < height && cells[x, y].state != cell_state_wall;
 }
@@ -86,9 +86,9 @@ void map::build_neighbour_cache()
 		delete[] neighbour_cache;
 	}
 	neighbour_cache = new neighbour_cache_entry[width * height];
-	for (unsigned short i = 0; i < width; ++i)
+	for (short i = 0; i < width; ++i)
 	{
-		for (unsigned short j = 0; j < height; ++j)
+		for (short j = 0; j < height; ++j)
 		{
 			auto& cache_entry = neighbour_cache[i*height + j];
 			auto cell = cell_get(i, j);

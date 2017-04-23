@@ -17,9 +17,9 @@ string text_map_visualizer::visualize_to_string(map* map) const
 
 void text_map_visualizer::visualize(map* map, ostream& os) const
 {
-	for (unsigned short i = 0; i < map->width; i++)
+	for (int i = 0; i < map->width; i++)
 	{
-		for (unsigned short j = 0; j < map->height; j++)
+		for (int j = 0; j < map->height; j++)
 		{
 			auto cell = map->cell_get(i, j);
 			auto state = cell->state & cell_states;
