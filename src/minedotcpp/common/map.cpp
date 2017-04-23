@@ -1,29 +1,22 @@
 #include "map.h"
+#include "cell.h"
+#include "neighbour_cache_entry.h"
 
 using namespace minedotcpp::common;
 
-neighbour_cache_entry::neighbour_cache_entry()
-{
-
-}
-
-neighbour_cache_entry::~neighbour_cache_entry()
-{
-
-}
-
-map::map(unsigned short width, unsigned short height)
+map::map(unsigned short width, unsigned short height, int remaining_mine_count)
 {
 	this->width = width;
 	this->height = height;
+	this->remaining_mine_count = remaining_mine_count;
 	cells = new cell[width*height];
 	for (unsigned short i = 0; i < width; ++i)
 	{
 		for (unsigned short j = 0; j < height; ++j)
 		{
 			auto cell = cell_get(i, j);
-			cell->point.x = i;
-			cell->point.y = j;
+			cell->pt.x = i;
+			cell->pt.y = j;
 		}
 	}
 	neighbour_cache = nullptr;
@@ -99,7 +92,7 @@ void map::build_neighbour_cache()
 		{
 			auto& cache_entry = neighbour_cache[i*height + j];
 			auto cell = cell_get(i, j);
-			calculate_neighbours_of(cell->point, cache_entry.all_neighbours);
+			calculate_neighbours_of(cell->pt, cache_entry.all_neighbours, false);
 			for(auto& neighbour : cache_entry.all_neighbours)
 			{
 				auto param = neighbour->state;
