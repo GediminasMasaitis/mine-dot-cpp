@@ -1,11 +1,12 @@
 #pragma once
+#include "../mine_api.h"
 #include "../common/map.h"
 
 namespace minedotcpp
 {
 	namespace mapio
 	{
-		class text_map_parser
+		class MINE_API text_map_parser
 		{
 		public:
 			common::map* parse(std::string str) const;

@@ -1,7 +1,6 @@
 #include <iostream>
 #include <string>
 #include <fstream>
-#include "mine.h"
 #include "mapio/text_map_parser.h"
 #include "mapio/text_map_visualizer.h"
 

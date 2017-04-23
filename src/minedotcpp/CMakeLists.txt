@@ -3,7 +3,7 @@ file(GLOB_RECURSE minedotcpp_src
     "*.cpp"
 )
 
-add_library(minedotcpp ${minedotcpp_src})
+add_library(minedotcpp SHARED ${minedotcpp_src})
 set_property(TARGET minedotcpp PROPERTY CXX_STANDARD 11)
 add_definitions(-DMINE_EXPORTS)
 

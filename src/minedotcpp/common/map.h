@@ -2,6 +2,7 @@
 
 #include <vector>
 
+#include "../mine_api.h"
 #include "point.h"
 #include "cell.h"
 #include "neighbour_cache_entry.h"
@@ -10,7 +11,7 @@ namespace minedotcpp
 {
 	namespace common
 	{
-		class map
+		class MINE_API map
 		{
 		public:
 			unsigned short width;

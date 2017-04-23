@@ -1,4 +1,6 @@
 #pragma once
+
+#include "../mine_api.h"
 #include "point.h"
 #include "cell_param.h"
 
@@ -6,7 +8,7 @@ namespace minedotcpp
 {
 	namespace common
 	{
-		class cell
+		class MINE_API cell
 		{
 		public:
 			point pt;
