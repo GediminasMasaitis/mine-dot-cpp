@@ -2,7 +2,7 @@
 #include "../common/point.h"
 #include "solver_verdict.h"
 
-namespace monedotcpp
+namespace minedotcpp
 {
 	namespace solvers
 	{

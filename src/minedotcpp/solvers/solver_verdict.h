@@ -1,6 +1,6 @@
 #pragma once
 
-namespace monedotcpp
+namespace minedotcpp
 {
 	namespace solvers
 	{

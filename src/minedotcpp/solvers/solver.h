@@ -1,7 +1,7 @@
 #pragma once
 #include "solver_settings.h"
 
-namespace monedotcpp
+namespace minedotcpp
 {
 	namespace solvers
 	{

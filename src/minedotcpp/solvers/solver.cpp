@@ -1,6 +1,6 @@
 #include "solver.h"
 
-using namespace monedotcpp::solvers;
+using namespace minedotcpp::solvers;
 
 solver::solver(solver_settings settings)
 {

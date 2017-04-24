@@ -4,6 +4,11 @@
 
 using namespace minedotcpp::common;
 
+map::map()
+{
+	
+}
+
 map::map(int width, int height, int remaining_mine_count)
 {
 	this->width = width;

@@ -31,8 +31,13 @@ namespace minedotcpp
 			bool cell_exists(point pt);
 			neighbour_cache_entry* neighbour_cache_get(int x, int y);
 			neighbour_cache_entry* neighbour_cache_get(point pt);
-		private:
+
 			void build_neighbour_cache();
+
+		protected:
+			map();
+
+		private:
 			void calculate_neighbours_of(point pt, std::vector<cell*>& cells, bool include_self);
 		};
 	}
