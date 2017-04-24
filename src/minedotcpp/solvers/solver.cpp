@@ -16,6 +16,10 @@ std::unordered_map<point, solver_result>* solver::solve(const map& base_map) con
 	{
 		m.remaining_mine_count = -1;
 	}
-	m.build_neighbour_cache();
 	return nullptr;
+}
+
+void solver::set_cells_by_verdicts(solver_map& map, std::unordered_map<point, bool>& verdicts)
+{
+
 }

@@ -10,7 +10,7 @@ namespace minedotcpp
 		{
 		public:
 			std::vector<cell*> all_neighbours;
-			std::vector<cell*> by_state[16];
+			std::vector<cell*> by_state[4];
 			std::vector<cell*> by_flag[16];
 			std::vector<cell*> by_param[16];
 		};

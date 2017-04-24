@@ -1,8 +1,11 @@
 #include "solver_map.h"
+#include <unordered_map>
+#include <unordered_set>
 
 using namespace minedotcpp::common;
+using namespace minedotcpp::solvers;
 
-minedotcpp::solvers::solver_map::solver_map(const map& base_map)
+solver_map::solver_map(const map& base_map)
 {
 	width = base_map.width;
 	height = base_map.height;
@@ -37,5 +40,126 @@ minedotcpp::solvers::solver_map::solver_map(const map& base_map)
 				undecided_count++;
 			}
 		}
+	}
+	build_neighbour_cache();
+}
+
+inline neighbour_cache_entry* solver_map::neighbour_cache_get(int x, int y)
+{
+	return &neighbour_cache[x*height + y];
+}
+
+inline neighbour_cache_entry* solver_map::neighbour_cache_get(point pt)
+{
+	return neighbour_cache_get(pt.x, pt.y);
+}
+
+
+void solver_map::build_neighbour_cache()
+{
+	if (neighbour_cache)
+	{
+		delete[] neighbour_cache;
+	}
+	neighbour_cache = new neighbour_cache_entry[width * height];
+	for (short i = 0; i < width; ++i)
+	{
+		for (short j = 0; j < height; ++j)
+		{
+			auto& cache_entry = neighbour_cache[i*height + j];
+			auto cell = cell_get(i, j);
+			calculate_neighbours_of(cell->pt, cache_entry.all_neighbours, false);
+			build_additional_neighbour_lists(cache_entry);
+		}
+	}
+}
+
+void solver_map::set_cells_by_verdicts(std::unordered_map<point, bool, point_hash> verdicts)
+{
+	std::unordered_set<point, point_hash> points_to_update;
+	for(auto result : verdicts)
+	{
+		auto cell = cell_get(result.first);
+		if (result.second)
+		{
+			cell->state = cell_state_filled | cell_flag_has_mine;
+			flagged_count++;
+			undecided_count--;
+			if (remaining_mine_count > 0)
+			{
+				remaining_mine_count--;
+			}
+		}
+		else
+		{
+			cell->state = cell_state_filled | cell_flag_doesnt_have_mine;
+			anti_flagged_count++;
+			undecided_count--;
+		}
+		auto entry = neighbour_cache_get(result.first);
+		for(auto neighbour : entry->all_neighbours)
+		{
+			points_to_update.insert(neighbour->pt);
+		}
+	}
+	for(auto pt : points_to_update)
+	{
+		update_neighbour_cache(pt);
+	}
+}
+
+void solver_map::update_neighbour_cache(point pt)
+{
+	auto entry = neighbour_cache_get(pt);
+	for(auto i = 0; i < 4; i++)
+	{
+		entry->by_state[i].clear();
+		entry->by_flag[i << 2].clear();
+		entry->by_param[i].clear();
+		entry->by_param[(cell_state_filled | i << 2)].clear();
+	}
+	build_additional_neighbour_lists(*entry);
+}
+
+void solver_map::build_additional_neighbour_lists(neighbour_cache_entry& entry)
+{
+	for (auto& neighbour : entry.all_neighbours)
+	{
+		auto param = neighbour->state;
+		entry.by_param[param].push_back(neighbour);
+
+		auto state = param & cell_states;
+		entry.by_state[state].push_back(neighbour);
+
+		auto flag = param & cell_flags;
+		entry.by_flag[flag].push_back(neighbour);
+	}
+}
+
+static const point neighbour_offsets[8] = {
+	{ -1,-1 },
+	{ -1, 0 },
+	{ -1, 1 },
+	{ 0,-1 },
+	{ 0, 1 },
+	{ 1,-1 },
+	{ 1, 0 },
+	{ 1, 1 }
+};
+
+static const int neighbour_offset_count = 8;
+
+void solver_map::calculate_neighbours_of(point pt, std::vector<cell*> &cells, bool include_self = false)
+{
+	for (auto i = 0; i < neighbour_offset_count; i++)
+	{
+		if (auto c = cell_try_get(pt + neighbour_offsets[i]))
+		{
+			cells.push_back(c);
+		}
+	}
+	if (include_self)
+	{
+		cells.push_back(cell_get(pt));
 	}
 }
