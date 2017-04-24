@@ -5,7 +5,7 @@ namespace minedotcpp
 {
 	namespace solvers
 	{
-		class solver_map : minedotcpp::common::map
+		class MINE_API solver_map : public minedotcpp::common::map
 		{
 		public:
 			int filled_count;

@@ -4,6 +4,7 @@
 #include <fstream>
 #include "mapio/text_map_parser.h"
 #include "mapio/text_map_visualizer.h"
+#include "solvers/solver.h"
 
 using namespace std;
 using namespace minedotcpp::common;
@@ -48,7 +49,11 @@ int main(int argc, char* argv[])
 	{
 		test_map = parser.parse(&strm);
 	}
-	
+
+	minedotcpp::solvers::solver_settings settings;
+	minedotcpp::solvers::solver s(settings);
+	s.solve(*test_map);
+
 	auto str = visualizer.visualize_to_string(test_map);
 	cout << str << endl;
 	strm.close();

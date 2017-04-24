@@ -51,7 +51,7 @@ cell* map::cell_try_get(int x, int y)
 	if(x >= 0 && y >= 0 && x < width && y < height)
 	{
 		auto cell = cell_get(x,y);
-		if(cell->state != cell_state_empty)
+		if(cell->state != cell_state_wall)
 		{
 			return cell;
 		}
@@ -113,7 +113,7 @@ void map::build_neighbour_cache()
 	}
 }
 
-static const point* neighbour_offsets = new point[8] {
+static const point neighbour_offsets[8] = {
 	{-1,-1 },
 	{-1, 0 },
 	{-1, 1 },

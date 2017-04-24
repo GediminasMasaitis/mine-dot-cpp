@@ -18,20 +18,24 @@ minedotcpp::solvers::solver_map::solver_map(const map& base_map)
 	for (auto i = 0; i < size; ++i)
 	{
 		cells[i] = base_map.cells[i];
-		if(cells[i].state == cell_state_filled | cell_flag_has_mine)
+		auto state = cells[i].state & cell_states;
+		if (state == cell_state_filled)
 		{
-			filled_count++;
-			flagged_count++;
-		}
-		else if(cells[i].state == cell_state_filled | cell_flag_has_mine)
-		{
-			filled_count++;
-			anti_flagged_count++;
-		}
-		else
-		{
-			filled_count++;
-			undecided_count++;
+			if (cells[i].state == (cell_state_filled | cell_flag_has_mine))
+			{
+				filled_count++;
+				flagged_count++;
+			}
+			else if (cells[i].state == (cell_state_filled | cell_flag_doesnt_have_mine))
+			{
+				filled_count++;
+				anti_flagged_count++;
+			}
+			else
+			{
+				filled_count++;
+				undecided_count++;
+			}
 		}
 	}
 }

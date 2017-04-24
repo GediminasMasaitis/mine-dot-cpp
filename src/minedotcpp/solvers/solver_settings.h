@@ -1,33 +1,33 @@
 #pragma once
 
+#include "../mine_api.h"
+
 namespace minedotcpp
 {
 	namespace solvers
 	{
-		struct solver_settings
+		struct MINE_API solver_settings
 		{
 		public:
-			bool stop_on_no_mine_verdict;
-			bool stop_on_any_verdict;
+			bool stop_on_no_mine_verdict = false;
+			bool stop_on_any_verdict = false;
 
-			bool solve_trivial;
-			bool stop_after_trivial_solving;
-				
-			bool solve_gaussian;
-			bool stop_after_gaussian_solving;
+			bool solve_trivial = false;
+			bool stop_after_trivial_solving = true;
 
-			bool ignore_mine_count_completely;
-			bool solve_by_mine_count;
-			bool solve_non_border_cells;
+			bool solve_gaussian = true;
+			bool stop_after_gaussian_solving = false;
 
-			bool solve_hint_probabilities;
+			bool ignore_mine_count_completely = false;
+			bool solve_by_mine_count = true;
+			bool solve_non_border_cells = true;
 
-			bool partial_border_solving;
-			bool border_resplitting;
-			int partial_border_solve_from;
-			int give_up_from;
-			int max_partial_border_size;
-			bool set_partially_calculated_probabilities;
+			bool partial_border_solving = true;
+			bool border_resplitting = true;
+			int partial_border_solve_from = 18;
+			int give_up_from = 20;
+			int max_partial_border_size = 14;
+			bool set_partially_calculated_probabilities = true;
 		};
 	}
 }
