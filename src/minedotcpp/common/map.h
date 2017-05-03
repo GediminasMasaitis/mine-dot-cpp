@@ -23,6 +23,7 @@ namespace minedotcpp
 
 			cell& cell_get(int x, int y);
 			cell& cell_get(point pt);
+			inline cell& operator[] (point pt) { return cell_get(pt); }
 			cell* cell_try_get(int x, int y);
 			cell* cell_try_get(point pt);
 			bool cell_exists(int x, int y);

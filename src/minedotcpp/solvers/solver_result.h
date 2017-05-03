@@ -9,7 +9,7 @@ namespace minedotcpp
 		struct solver_result
 		{
 		public:
-			minedotcpp::common::point pt;
+			common::point pt;
 			double probability;
 			solver_verdict verdict;
 		};

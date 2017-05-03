@@ -16,6 +16,7 @@ namespace minedotcpp
 			// Flags
 			cell_flags = 3 << 2,
 
+			cell_flag_none = 0 << 2,
 			cell_flag_has_mine = 1 << 2,
 			cell_flag_doesnt_have_mine = 2 << 2,
 			cell_flag_not_sure = 3 << 2

@@ -1,5 +1,7 @@
 #pragma once
 #include <unordered_map>
+#include <unordered_set>
+#include <queue>
 
 namespace minedotcpp
 {
@@ -30,6 +32,7 @@ namespace minedotcpp
 		template<typename T>
 		using point_map = std::unordered_map<point, T, point_hash>;
 
+		using point_set = std::unordered_set<point, point_hash>;
 	}
 }
 

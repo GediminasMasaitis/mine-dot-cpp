@@ -21,6 +21,7 @@ void print_results(point_map<solver_result>* results)
 	{
 		cout << "[" << result.first.x << ";" << result.first.y << "] " << result.second.probability * 100 << "%" << endl;
 	}
+	cout << endl;
 }
 
 int main(int argc, char* argv[])
@@ -65,6 +66,7 @@ int main(int argc, char* argv[])
 	}
 
 	solver_settings settings;
+	settings.solve_trivial = false;
 	solver s(settings);
 	auto results = s.solve(*test_map);
 	print_results(results);
