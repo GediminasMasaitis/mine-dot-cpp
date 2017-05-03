@@ -92,24 +92,17 @@ void solver::solve_trivial(solver_map& m, point_map<bool>& verdicts) const
 
 void solver::solve_separation(solver_map& m, point_map<double>& probabilities, point_map<bool>& verdicts) const
 {
-	auto common_border_ptr = find_common_border(m);
-	auto& common_border = *common_border_ptr;
-	auto original_border_sequence_ptr = separate_borders(m, common_border);
-	auto& original_border_sequence = *original_border_sequence_ptr;
+	border common_border;
+	std::vector<border> original_border_sequence;
 
+	find_common_border(m, common_border);
+	separate_borders(m, common_border, original_border_sequence);
+	
 
-
-	for(auto b : original_border_sequence)
-	{
-		delete b;
-	}
-	delete original_border_sequence_ptr;
-	delete common_border_ptr;
 }
 
-border* solver::get_partial_border(solver_map& m, point_set& allowed_coordinates, point target_coordinate) const
+void solver::get_partial_border(solver_map& m, point_set& allowed_coordinates, point target_coordinate, border& target_border) const
 {
-	auto b = new border();
 	point_set common_coords(allowed_coordinates);
 	std::queue<point> coord_queue;
 	coord_queue.push(target_coordinate);
@@ -123,7 +116,7 @@ border* solver::get_partial_border(solver_map& m, point_set& allowed_coordinates
 		if (common_coords.find(coord) != common_coords.end())
 		{
 			common_coords.erase(coord);
-			b->cells.push_back(cell);
+			target_border.cells.push_back(cell);
 		}
 		visited.insert(coord);
 		auto unflagged_neighbours = m.neighbour_cache_get(coord).by_flag[cell_flag_none];
@@ -141,28 +134,27 @@ border* solver::get_partial_border(solver_map& m, point_set& allowed_coordinates
 			}
 		}
 	}
-	return b;
 }
 
-std::vector<border*>* solver::separate_borders(solver_map& m, border& common_border) const
+void solver::separate_borders(solver_map& m, border& common_border, std::vector<border> target_borders) const
 {
-	auto borders = new std::vector<border*>();
 	point_set common_coords;
 	for(auto c : common_border.cells)
 	{
 		common_coords.insert(c.pt);
 	}
+	auto i = target_borders.size();
 	while (common_coords.size() > 0)
 	{
 		auto& initial_point = *common_coords.begin();
-		auto border = get_partial_border(m, common_coords, initial_point);
-		borders->push_back(border);
-		for(auto& c : border->cells)
+		target_borders.resize(++i);
+		auto& brd = target_borders[i-1];
+		get_partial_border(m, common_coords, initial_point, brd);
+		for(auto& c : brd.cells)
 		{
 			common_coords.erase(c.pt);
 		}
 	}
-	return borders;
 }
 
 bool solver::is_cell_border(solver_map& m, cell& c) const
@@ -175,17 +167,15 @@ bool solver::is_cell_border(solver_map& m, cell& c) const
 	return has_empty_neighbour;
 }
 
-border* solver::find_common_border(solver_map& m) const
+void solver::find_common_border(solver_map& m, border& common_border) const
 {
-	auto border_ptr = new border();
 	for(auto& cell : m.cells)
 	{
 		if(is_cell_border(m, cell))
 		{
-			border_ptr->cells.push_back(cell);
+			common_border.cells.push_back(cell);
 		}
 	}
-	return border_ptr;
 }
 
 bool solver::should_stop_solving(point_map<bool>& verdicts) const
