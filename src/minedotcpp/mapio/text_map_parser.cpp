@@ -51,32 +51,32 @@ for(auto line : lines)
 	{
 		for (unsigned int j = 0; j < height; ++j)
 		{
-			auto c = map->cell_get(i, j);
+			auto& c = map->cell_get(i, j);
 			switch (line[j])
 			{
 			case '.':
-				c->state = cell_state_empty;
-				c->hint = 0;
+				c.state = cell_state_empty;
+				c.hint = 0;
 				break;
 			case '#':
-				c->state = cell_state_filled;
-				c->hint = 0;
+				c.state = cell_state_filled;
+				c.hint = 0;
 				break;
 			case '?':
-				c->state = cell_state_filled | cell_flag_not_sure;
-				c->hint = 0;
+				c.state = cell_state_filled | cell_flag_not_sure;
+				c.hint = 0;
 				break;
 			case '!':
-				c->state = cell_state_filled | cell_flag_has_mine;
-				c->hint = 0;
+				c.state = cell_state_filled | cell_flag_has_mine;
+				c.hint = 0;
 				break;
 			case 'X':
-				c->state = cell_state_wall;
-				c->hint = 0;
+				c.state = cell_state_wall;
+				c.hint = 0;
 				break;
 			default:
-				c->state = cell_state_empty;
-				c->hint = line[j] - '0';
+				c.state = cell_state_empty;
+				c.hint = line[j] - '0';
 				break;
 			}
 		}

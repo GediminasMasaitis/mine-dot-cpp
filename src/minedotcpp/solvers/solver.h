@@ -16,12 +16,12 @@ namespace minedotcpp
 		public:
 			solver_settings settings;
 
-			explicit solver(solver_settings settings);
-
-			std::unordered_map<common::point, solver_result>* solve(const common::map& map) const;
-
+			explicit solver(solver_settings& settings);
+			std::unordered_map<common::point, solver_result, common::point_hash>* solve(const common::map& map) const;
+			void solve_trivial(solver_map& m, std::unordered_map<common::point, bool, common::point_hash>& verdicts) const;
 		private:
-			void set_cells_by_verdicts(solver_map& map, std::unordered_map<common::point, bool>& verdicts);
+			bool should_stop_solving(std::unordered_map<common::point, bool, common::point_hash>& verdicts) const;
+			std::unordered_map<common::point, solver_result, common::point_hash>* get_final_results(std::unordered_map<common::point, double, common::point_hash>& probabilities, std::unordered_map<common::point, bool, common::point_hash>& verdicts) const;
 		};
 	}
 }

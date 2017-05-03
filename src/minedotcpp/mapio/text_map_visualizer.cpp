@@ -22,22 +22,22 @@ void text_map_visualizer::visualize(map* map, ostream& os) const
 		for (int j = 0; j < map->height; j++)
 		{
 			auto cell = map->cell_get(i, j);
-			auto state = cell->state & cell_states;
+			auto state = cell.state & cell_states;
 			switch(state)
 			{
 			case cell_state_empty:
-				if(cell->hint == 0)
+				if(cell.hint == 0)
 				{
 					os << '.';
 				}
 				else
 				{
-					os << cell->hint;
+					os << cell.hint;
 				}
 				break;
 			case cell_state_filled:
 			{
-				auto flag = cell->state & cell_flags;
+				auto flag = cell.state & cell_flags;
 				switch (flag)
 				{
 				case cell_flag_has_mine:

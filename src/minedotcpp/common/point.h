@@ -1,4 +1,6 @@
 #pragma once
+#include <unordered_map>
+
 namespace minedotcpp
 {
 	namespace common
@@ -24,6 +26,10 @@ namespace minedotcpp
 				return pt.x << 4 | pt.y;
 			}
 		};
+
+		template<typename T>
+		using point_map = std::unordered_map<point, T, point_hash>;
+
 	}
 }
 

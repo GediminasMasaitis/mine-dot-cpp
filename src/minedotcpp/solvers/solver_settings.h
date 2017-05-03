@@ -12,8 +12,8 @@ namespace minedotcpp
 			bool stop_on_no_mine_verdict = false;
 			bool stop_on_any_verdict = false;
 
-			bool solve_trivial = false;
-			bool stop_after_trivial_solving = true;
+			bool solve_trivial = true;
+			bool stop_after_trivial_solving = false;
 
 			bool solve_gaussian = true;
 			bool stop_after_gaussian_solving = false;

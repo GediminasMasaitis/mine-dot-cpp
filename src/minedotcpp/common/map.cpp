@@ -14,34 +14,25 @@ map::map(int width, int height, int remaining_mine_count)
 	this->width = width;
 	this->height = height;
 	this->remaining_mine_count = remaining_mine_count;
-	cells = new cell[width*height];
+	//cells = new std::vector<cell>(width*height);
+	cells.resize(width*height);
 	for (int i = 0; i < width; ++i)
 	{
 		for (int j = 0; j < height; ++j)
 		{
-			auto cell = cell_get(i, j);
-			cell->pt.x = i;
-			cell->pt.y = j;
+			auto& cell = cell_get(i, j);
+			cell.pt.x = i;
+			cell.pt.y = j;
 		}
 	}
-	neighbour_cache = nullptr;
 }
 
-map::~map()
+inline cell& map::cell_get(int x, int y)
 {
-	delete[] cells;
-	if(neighbour_cache)
-	{
-		delete[] neighbour_cache;
-	}
+	return cells[x*height + y];
 }
 
-inline cell* map::cell_get(int x, int y)
-{
-	return &cells[x*height + y];
-}
-
-inline cell* map::cell_get(point pt)
+inline cell& map::cell_get(point pt)
 {
 	return cell_get(pt.x, pt.y);
 }
@@ -50,10 +41,10 @@ cell* map::cell_try_get(int x, int y)
 {
 	if(x >= 0 && y >= 0 && x < width && y < height)
 	{
-		auto cell = cell_get(x,y);
-		if(cell->state != cell_state_wall)
+		auto& cell = cell_get(x,y);
+		if(cell.state != cell_state_wall)
 		{
-			return cell;
+			return &cell;
 		}
 	}
 	return nullptr;

@@ -8,6 +8,20 @@
 
 using namespace std;
 using namespace minedotcpp::common;
+using namespace minedotcpp::solvers;
+
+void print_results(point_map<solver_result>* results)
+{
+	if(results == nullptr)
+	{
+		cout << "No results" << endl;
+		return;
+	}
+	for(auto& result : *results)
+	{
+		cout << "[" << result.first.x << ";" << result.first.y << "] " << result.second.probability * 100 << "%" << endl;
+	}
+}
 
 int main(int argc, char* argv[])
 {
@@ -26,7 +40,7 @@ int main(int argc, char* argv[])
 			}
 			else
 			{
-				std::cout << "No path supplied" << endl;
+				cout << "No path supplied" << endl;
 				return 1;
 			}
 		}
@@ -38,7 +52,7 @@ int main(int argc, char* argv[])
 			}
 			else
 			{
-				std::cout << "No map supplied" << endl;
+				cout << "No map supplied" << endl;
 				return 1;
 			}
 		}
@@ -50,10 +64,11 @@ int main(int argc, char* argv[])
 		test_map = parser.parse(&strm);
 	}
 
-	minedotcpp::solvers::solver_settings settings;
-	minedotcpp::solvers::solver s(settings);
-	s.solve(*test_map);
-
+	solver_settings settings;
+	solver s(settings);
+	auto results = s.solve(*test_map);
+	print_results(results);
+	delete results;
 	auto str = visualizer.visualize_to_string(test_map);
 	cout << str << endl;
 	strm.close();
@@ -61,3 +76,4 @@ int main(int argc, char* argv[])
 	getc(stdin);
 	return 0;
 }
+
