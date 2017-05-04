@@ -1,10 +1,12 @@
 #pragma once
+#include "../mine_api.h"
 #include "solver_settings.h"
-#include <unordered_map>
 #include "../common/point.h"
 #include "solver_result.h"
 #include "../common/map.h"
 #include "border.h"
+
+#include <unordered_map>
 
 namespace minedotcpp
 {
