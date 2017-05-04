@@ -93,12 +93,197 @@ void solver::solve_trivial(solver_map& m, point_map<bool>& verdicts) const
 void solver::solve_separation(solver_map& m, point_map<double>& probabilities, point_map<bool>& verdicts) const
 {
 	border common_border;
-	std::vector<border> original_border_sequence;
+	std::vector<border> original_borders;
+	std::vector<border> borders;
 
 	find_common_border(m, common_border);
-	separate_borders(m, common_border, original_border_sequence);
+	separate_borders(m, common_border, original_borders);
 	
+	for(auto& border : original_borders)
+	{
+		
+	}
+}
 
+void solver::solve_border(border& b, solver_map& m, bool allow_partial_border_solving, std::vector<border> borders)
+{
+	if (settings.partial_border_solving)
+	{
+		if (allow_partial_border_solving && b.cells.size() > settings.partial_border_solve_from)
+		{
+			//TrySolveBorderByPartialBorders(b, m);
+		}
+		if (should_stop_solving(b.verdicts))
+		{
+			borders.push_back(b);
+			return;
+		}
+
+		if (settings.border_resplitting && b.verdicts.size() > 0)
+		{
+			//var borders = TrySolveBorderByReseparating(b, m);
+			//if (borders != null)
+			//{
+			//	return borders;
+			//}
+		}
+	}
+
+	if (b.cells.size() > settings.give_up_from)
+	{
+		b.solved_fully = false;
+		borders.push_back(b);
+		return;
+	}
+
+	find_valid_border_cell_combinations(m, b);
+	if (b.valid_combinations.size() == 0)
+	{
+		// TODO: Must be invalid map... Handle somehow
+	}
+
+
+	auto currentMineVerdicts = 0;
+	for(auto& verdict : b.verdicts)
+	{
+		if(verdict.second)
+		{
+			currentMineVerdicts++;
+		}
+	}
+
+	for(auto& valid_combination : b.valid_combinations)
+	{
+		
+	}
+
+	/*b.MinMineCount = b.ValidCombinations.Min(x = > x.Count(y = > y.Value)) + currentMineVerdicts;
+	b.MaxMineCount = b.ValidCombinations.Max(x = > x.Count(y = > y.Value)) + currentMineVerdicts;
+
+	// We find the border's probabilities, find the verdicts from said probabilities, and modify any cells we found.
+	// We then remove all verdicts from the probabilities, and remove the cells from the border.
+	GetBorderProbabilities(b, b.Probabilities);
+	GetVerdictsFromProbabilities(b.Probabilities, b.Verdicts);
+	SetCellsByVerdicts(m, b.Verdicts);
+	foreach(var wholeBorderResult in b.Verdicts)
+	{
+		b.Probabilities.Remove(wholeBorderResult.Key);
+		var cell = m[wholeBorderResult.Key];
+		b.Cells.Remove(cell);
+		foreach(var validCombination in b.ValidCombinations)
+		{
+			validCombination.Remove(wholeBorderResult.Key);
+		}
+	}
+
+	b.SolvedFully = true;
+	// TODO: try resplitting borders anyway after solving?
+	return new[] { b };*/
+}
+
+void solver::find_valid_border_cell_combinations(solver_map& map, border& border)
+{
+	auto border_length = border.cells.size();
+	const int maxSize = 31;
+	if (border_length > maxSize)
+	{
+		// TODO: handle too big border
+		//throw new InvalidDataException($"Border with {borderLength} cells is too large, maximum {maxSize} cells allowed");
+	}
+	auto totalCombinations = 1 << border_length;
+	auto allRemainingCellsInBorder = map.undecided_count == border_length;
+	std::vector<cell> empty_cells;
+	for(auto& cell : map.cells)
+	{
+		if(cell.state == cell_state_empty)
+		{
+			empty_cells.push_back(cell);
+		}
+	}
+	auto prediction_index = border.valid_combinations.size();
+	auto prediction_valid = false;
+	for(int combo = 0; combo < totalCombinations; combo++)
+	{
+		if (map.remaining_mine_count > 0)
+		{
+			auto bits_set = SWAR(combo);
+			if (bits_set > map.remaining_mine_count)
+			{
+				continue;
+			}
+			if (allRemainingCellsInBorder && bits_set != map.remaining_mine_count)
+			{
+				continue;
+			}
+		}
+		auto& predictions = border.valid_combinations[prediction_index];
+		predictions.reserve(border_length);
+		for (auto j = 0; j < border_length; j++)
+		{
+			auto& pt = border.cells[j].pt;
+			auto has_mine = (combo & (1 << j)) > 0;
+			predictions[pt] = has_mine;
+		}
+		prediction_valid = is_prediction_valid(map, predictions, empty_cells);
+		if (prediction_valid)
+		{
+			prediction_index++;
+		}
+	}
+	if(!prediction_valid)
+	{
+		border.valid_combinations.pop_back();
+	}
+}
+
+bool solver::is_prediction_valid(solver_map& map, point_map<bool>& prediction, std::vector<cell>& empty_cells)
+{
+	for(auto& cell : empty_cells)
+	{
+		auto neighbours_with_mine = 0;
+		auto neighboursWithoutMine = 0;
+		auto filled_neighbours = map.neighbour_cache_get(cell.pt).by_state[cell_state_filled];
+		for(auto& neighbour : filled_neighbours)
+		{
+			auto flag = neighbour.state & cell_flags;
+			switch (flag)
+			{
+			case cell_flag_has_mine:
+				neighbours_with_mine++;
+				break;
+			case cell_flag_doesnt_have_mine:
+				neighboursWithoutMine++;
+				break;
+			default:
+				auto verdict = prediction[neighbour.pt];
+				if (verdict)
+				{
+					neighbours_with_mine++;
+				}
+				else
+				{
+					neighboursWithoutMine++;
+				}
+				break;
+			}
+		}
+		if (neighbours_with_mine > cell.hint)
+			return false;
+		if (filled_neighbours.size() - neighboursWithoutMine < cell.hint)
+			return false;
+		//if (foundUnknownCell)
+		//	continue;
+		if (cell.hint != neighbours_with_mine)
+			return false;
+	}
+	return true;
+}
+
+int solver::SWAR(int i)
+{
+	i = i - ((i >> 1) & 0x55555555);
+	i = (i & 0x33333333) + ((i >> 2) & 0x33333333);
+	return (((i + (i >> 4)) & 0x0F0F0F0F) * 0x01010101) >> 24;
 }
 
 void solver::get_partial_border(solver_map& m, point_set& allowed_coordinates, point target_coordinate, border& target_border) const
