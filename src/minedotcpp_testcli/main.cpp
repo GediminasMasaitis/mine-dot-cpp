@@ -5,6 +5,7 @@
 #include "mapio/text_map_parser.h"
 #include "mapio/text_map_visualizer.h"
 #include "solvers/solver.h"
+#include <chrono>
 
 using namespace std;
 using namespace minedotcpp::common;
@@ -68,7 +69,13 @@ int main(int argc, char* argv[])
 	solver_settings settings;
 	settings.solve_trivial = false;
 	solver s(settings);
+	std::chrono::high_resolution_clock clock;
+	auto start_time = clock.now();
 	auto results = s.solve(*test_map);
+	auto end_time = clock.now();
+	auto diff = end_time - start_time;
+	
+	cout << endl << "That took " << std::chrono::duration_cast<std::chrono::milliseconds>(diff).count() << " ms" << endl << endl;
 	print_results(results);
 	delete results;
 	auto str = visualizer.visualize_to_string(test_map);

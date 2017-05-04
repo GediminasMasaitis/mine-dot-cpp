@@ -101,11 +101,23 @@ void solver::solve_separation(solver_map& m, point_map<double>& probabilities, p
 	
 	for(auto& border : original_borders)
 	{
-		
+		solve_border(border, m, true, borders);
+		for(auto& borderVerdict : border.verdicts)
+		{
+			verdicts[borderVerdict.first] = borderVerdict.second;
+		}
+		for(auto& probability : border.probabilities)
+		{
+			probabilities[probability.first] = probability.second;
+		}
+		if (should_stop_solving(verdicts))
+		{
+			return;
+		}
 	}
 }
 
-void solver::solve_border(border& b, solver_map& m, bool allow_partial_border_solving, std::vector<border> borders)
+void solver::solve_border(border& b, solver_map& m, bool allow_partial_border_solving, std::vector<border>& borders) const
 {
 	if (settings.partial_border_solving)
 	{
@@ -143,45 +155,70 @@ void solver::solve_border(border& b, solver_map& m, bool allow_partial_border_so
 	}
 
 
-	auto currentMineVerdicts = 0;
+	auto current_mine_verdicts = 0;
 	for(auto& verdict : b.verdicts)
 	{
 		if(verdict.second)
 		{
-			currentMineVerdicts++;
+			current_mine_verdicts++;
 		}
 	}
+
+	b.min_mine_count = 32;
+	b.max_mine_count = 0;
 
 	for(auto& valid_combination : b.valid_combinations)
 	{
-		
-	}
-
-	/*b.MinMineCount = b.ValidCombinations.Min(x = > x.Count(y = > y.Value)) + currentMineVerdicts;
-	b.MaxMineCount = b.ValidCombinations.Max(x = > x.Count(y = > y.Value)) + currentMineVerdicts;
-
-	// We find the border's probabilities, find the verdicts from said probabilities, and modify any cells we found.
-	// We then remove all verdicts from the probabilities, and remove the cells from the border.
-	GetBorderProbabilities(b, b.Probabilities);
-	GetVerdictsFromProbabilities(b.Probabilities, b.Verdicts);
-	SetCellsByVerdicts(m, b.Verdicts);
-	foreach(var wholeBorderResult in b.Verdicts)
-	{
-		b.Probabilities.Remove(wholeBorderResult.Key);
-		var cell = m[wholeBorderResult.Key];
-		b.Cells.Remove(cell);
-		foreach(var validCombination in b.ValidCombinations)
+		auto mine_count = 0;
+		for(auto& verdict : valid_combination)
 		{
-			validCombination.Remove(wholeBorderResult.Key);
+			if(verdict.second)
+			{
+				mine_count++;
+			}
+		}
+		if(mine_count < b.min_mine_count)
+		{
+			b.min_mine_count = mine_count;
+		}
+		if(mine_count > b.max_mine_count)
+		{
+			b.max_mine_count = mine_count;
 		}
 	}
 
-	b.SolvedFully = true;
+	b.min_mine_count += current_mine_verdicts;
+	b.max_mine_count += current_mine_verdicts;
+
+	calculate_border_probabilities(b);
+	get_verdicts_from_probabilities(b.probabilities, b.verdicts);
+	m.set_cells_by_verdicts(b.verdicts);
+	for(auto& whole_border_result : b.verdicts)
+	{
+		b.probabilities.erase(whole_border_result.first);
+		auto& c = m[whole_border_result.first];
+		auto c_index = -1;
+		for(auto i = 0; i < b.cells.size(); ++i)
+		{
+			if(c.pt == b.cells[i].pt)
+			{
+				c_index = i;
+				break;
+			}
+		}
+		b.cells.erase(b.cells.begin() + c_index);
+		for(auto& valid_combination : b.valid_combinations)
+		{
+			valid_combination.erase(whole_border_result.first);
+		}
+	}
+
+	b.solved_fully = true;
 	// TODO: try resplitting borders anyway after solving?
-	return new[] { b };*/
+	borders.push_back(b);
 }
 
-void solver::find_valid_border_cell_combinations(solver_map& map, border& border)
+void solver::find_valid_border_cell_combinations(solver_map& map, border& border) const
 {
 	auto border_length = border.cells.size();
 	const int maxSize = 31;
@@ -200,8 +237,8 @@ void solver::find_valid_border_cell_combinations(solver_map& map, border& border
 			empty_cells.push_back(cell);
 		}
 	}
-	auto prediction_index = border.valid_combinations.size();
-	auto prediction_valid = false;
+	//auto prediction_index = border.valid_combinations.size();
+	
 	for(int combo = 0; combo < totalCombinations; combo++)
 	{
 		if (map.remaining_mine_count > 0)
@@ -216,27 +253,24 @@ void solver::find_valid_border_cell_combinations(solver_map& map, border& border
 				continue;
 			}
 		}
-		auto& predictions = border.valid_combinations[prediction_index];
+		point_map<bool> predictions;
+		//auto& predictions = border.valid_combinations[prediction_index];
 		predictions.reserve(border_length);
-		for (auto j = 0; j < border_length; j++)
+		for (unsigned int j = 0; j < border_length; j++)
 		{
 			auto& pt = border.cells[j].pt;
 			auto has_mine = (combo & (1 << j)) > 0;
 			predictions[pt] = has_mine;
 		}
-		prediction_valid = is_prediction_valid(map, predictions, empty_cells);
+		auto prediction_valid = is_prediction_valid(map, predictions, empty_cells);
 		if (prediction_valid)
 		{
-			prediction_index++;
+			border.valid_combinations.push_back(predictions);
 		}
-	}
-	if(!prediction_valid)
-	{
-		border.valid_combinations.pop_back();
 	}
 }
 
-bool solver::is_prediction_valid(solver_map& map, point_map<bool>& prediction, std::vector<cell>& empty_cells)
+bool solver::is_prediction_valid(solver_map& map, point_map<bool>& prediction, std::vector<cell>& empty_cells) const
 {
 	for(auto& cell : empty_cells)
 	{
@@ -249,20 +283,20 @@ bool solver::is_prediction_valid(solver_map& map, point_map<bool>& prediction, s
 			switch (flag)
 			{
 			case cell_flag_has_mine:
-				neighbours_with_mine++;
+				++neighbours_with_mine;
 				break;
 			case cell_flag_doesnt_have_mine:
-				neighboursWithoutMine++;
+				++neighboursWithoutMine;
 				break;
 			default:
 				auto verdict = prediction[neighbour.pt];
 				if (verdict)
 				{
-					neighbours_with_mine++;
+					++neighbours_with_mine;
 				}
 				else
 				{
-					neighboursWithoutMine++;
+					++neighboursWithoutMine;
 				}
 				break;
 			}
@@ -279,11 +313,54 @@ bool solver::is_prediction_valid(solver_map& map, point_map<bool>& prediction, s
 	return true;
 }
 
-int solver::SWAR(int i)
+int solver::SWAR(int i) const
 {
 	i = i - ((i >> 1) & 0x55555555);
 	i = (i & 0x33333333) + ((i >> 2) & 0x33333333);
 	return (((i + (i >> 4)) & 0x0F0F0F0F) * 0x01010101) >> 24;
+}
+
+void solver::calculate_border_probabilities(border& b) const
+{
+	if (b.valid_combinations.size() == 0)
+	{
+		return;
+	}
+	for(auto& c : b.cells)
+	{
+		auto mine_count = 0;
+		for(auto& combination : b.valid_combinations)
+		{
+			if(combination[c.pt])
+			{
+				++mine_count;
+			}
+		}
+		auto probability = static_cast<double>(mine_count) / b.valid_combinations.size();
+		b.probabilities[c.pt] = probability;
+	}
+}
+
+void solver::get_verdicts_from_probabilities(point_map<double>& probabilities, point_map<bool>& target_verdicts) const
+{
+	for(auto& probability : probabilities)
+	{
+		bool verdict;
+		if (abs(probability.second) < 0.0000001)
+		{
+			verdict = false;
+		}
+		else if (abs(probability.second - 1) < 0.0000001)
+		{
+			verdict = true;
+		}
+		else
+		{
+			// TODO: Invalid probability, handle somehow
+			continue;
+		}
+		target_verdicts[probability.first] = verdict;
+	}
 }
 
 void solver::get_partial_border(solver_map& m, point_set& allowed_coordinates, point target_coordinate, border& target_border) const
@@ -321,7 +398,7 @@ void solver::get_partial_border(solver_map& m, point_set& allowed_coordinates, p
 	}
 }
 
-void solver::separate_borders(solver_map& m, border& common_border, std::vector<border> target_borders) const
+void solver::separate_borders(solver_map& m, border& common_border, std::vector<border>& target_borders) const
 {
 	point_set common_coords;
 	for(auto c : common_border.cells)
