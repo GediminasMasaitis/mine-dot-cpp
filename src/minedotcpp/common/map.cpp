@@ -27,16 +27,6 @@ map::map(int width, int height, int remaining_mine_count)
 	}
 }
 
-inline cell& map::cell_get(int x, int y)
-{
-	return cells[x*height + y];
-}
-
-inline cell& map::cell_get(point pt)
-{
-	return cell_get(pt.x, pt.y);
-}
-
 cell* map::cell_try_get(int x, int y)
 {
 	if(x >= 0 && y >= 0 && x < width && y < height)
@@ -48,11 +38,6 @@ cell* map::cell_try_get(int x, int y)
 		}
 	}
 	return nullptr;
-}
-
-inline cell* map::cell_try_get(point pt)
-{
-	return cell_try_get(pt.x, pt.y);
 }
 
 inline bool map::cell_exists(int x, int y)
