@@ -255,7 +255,7 @@ void solver::find_valid_border_cell_combinations(solver_map& map, border& border
 		}
 		point_map<bool> predictions;
 		//auto& predictions = border.valid_combinations[prediction_index];
-		predictions.reserve(border_length);
+		//predictions.reserve(border_length);
 		for (unsigned int j = 0; j < border_length; j++)
 		{
 			auto& pt = border.cells[j].pt;
@@ -289,7 +289,7 @@ bool solver::is_prediction_valid(solver_map& map, point_map<bool>& prediction, s
 				++neighboursWithoutMine;
 				break;
 			default:
-				auto verdict = prediction[neighbour.pt];
+				auto& verdict = prediction[neighbour.pt];
 				if (verdict)
 				{
 					++neighbours_with_mine;

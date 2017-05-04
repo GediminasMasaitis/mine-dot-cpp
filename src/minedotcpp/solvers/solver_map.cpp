@@ -43,16 +43,6 @@ solver_map::solver_map(const map& base_map)
 	build_neighbour_cache();
 }
 
-inline neighbour_cache_entry& solver_map::neighbour_cache_get(int x, int y)
-{
-	return neighbour_cache[x*height + y];
-}
-
-inline neighbour_cache_entry& solver_map::neighbour_cache_get(point pt)
-{
-	return neighbour_cache_get(pt.x, pt.y);
-}
-
 void solver_map::build_neighbour_cache()
 {
 	neighbour_cache.resize(width * height);
@@ -68,7 +58,7 @@ void solver_map::build_neighbour_cache()
 	}
 }
 
-void solver_map::set_cells_by_verdicts(point_map<bool> verdicts)
+void solver_map::set_cells_by_verdicts(point_map<bool>& verdicts)
 {
 	std::unordered_set<point, point_hash> points_to_update;
 	for(auto result : verdicts)

@@ -1,4 +1,9 @@
-add_executable(minedotcpp_testcli main.cpp)
+file(GLOB_RECURSE minedotcpp_testcli_src
+    "*.h"
+    "*.cpp"
+)
+
+add_executable(minedotcpp_testcli ${minedotcpp_testcli_src})
 
 set_property(TARGET minedotcpp_testcli PROPERTY CXX_STANDARD 11)
 if(shared)

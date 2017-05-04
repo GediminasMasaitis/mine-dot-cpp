@@ -27,6 +27,28 @@ void print_results(point_map<solver_result>* results)
 
 int main(int argc, char* argv[])
 {
+	/* std::chrono::high_resolution_clock cl;
+	auto b = cl.now();
+	for (int j = 0; j < 20000; j++)
+	{
+		google::dense_hash_map<point, bool, point_hash> a;
+		point empty_pt = { -1,-1 };
+		a.set_empty_key(empty_pt);
+		//a.resize(32);
+		//point_map<bool> a;
+		//a.reserve(32);
+		for (int i = 1; i < 32; i++)
+		{
+			point pt = { i, i * 2 };
+			a[pt] = true;
+		}
+	}
+	auto e = cl.now();
+	auto d = e - b;
+
+	cout << endl << "That took " << std::chrono::duration_cast<std::chrono::milliseconds>(d).count() << " ms" << endl << endl;
+	getc(stdin);
+	return 0;*/
 	minedotcpp::mapio::text_map_parser parser;
 	minedotcpp::mapio::text_map_visualizer visualizer;
 	string path = "C:/Temp/test_map.txt";

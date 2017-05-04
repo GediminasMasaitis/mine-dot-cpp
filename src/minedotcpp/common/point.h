@@ -2,6 +2,8 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <queue>
+#include "../sparsehash/dense_hash_map"
+#include "../sparsehash/dense_hash_set"
 
 namespace minedotcpp
 {
@@ -25,14 +27,39 @@ namespace minedotcpp
 		struct point_hash
 		{
 			size_t operator()(const point& pt) const {
-				return pt.x << 4 | pt.y;
+				return pt.x * 7919 + pt.y;
 			}
 		};
 
-		template<typename T>
-		using point_map = std::unordered_map<point, T, point_hash>;
+		//template<typename T>
+		//using point_map = google::dense_hash_map<point, T, point_hash>;//std::unordered_map<point, T, point_hash>;
 
-		using point_set = std::unordered_set<point, point_hash>;
+		template<typename T>
+		class point_map : public google::dense_hash_map<const point, T, point_hash>
+		{
+		public:
+			inline point_map()
+			{
+				point pt = { -1,-1 };
+				point deleted_pt = { -2,-2 };
+				set_empty_key(pt);
+				set_deleted_key(deleted_pt);
+			}
+		};
+
+		//using point_set = std::unordered_set<point, point_hash>;
+
+		class point_set : public google::dense_hash_set<point, point_hash>
+		{
+		public:
+			inline point_set()
+			{
+				point empty_pt = { -1,-1 };
+				point deleted_pt = { -2,-2 };
+				set_empty_key(empty_pt);
+				set_deleted_key(deleted_pt);
+			}
+		};
 	}
 }
 
