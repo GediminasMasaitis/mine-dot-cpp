@@ -229,13 +229,22 @@ void solver::find_valid_border_cell_combinations(solver_map& map, border& border
 	}
 	auto totalCombinations = 1 << border_length;
 	auto allRemainingCellsInBorder = map.undecided_count == border_length;
-	std::vector<cell> empty_cells;
-	for(auto& cell : map.cells)
+
+	point_set empty_pts;
+	for(auto& c : border.cells)
 	{
-		if(cell.state == cell_state_empty)
+		auto& entry = map.neighbour_cache_get(c.pt).by_state[cell_state_empty];
+		for (auto& cell : entry)
 		{
-			empty_cells.push_back(cell);
+			empty_pts.insert(cell.pt);
 		}
+	}
+	
+
+	std::vector<cell> empty_cells;
+	for(auto& pt : empty_pts)
+	{
+		empty_cells.push_back(map.cell_get(pt));
 	}
 	//auto prediction_index = border.valid_combinations.size();
 	
@@ -256,6 +265,7 @@ void solver::find_valid_border_cell_combinations(solver_map& map, border& border
 		point_map<bool> predictions;
 		//auto& predictions = border.valid_combinations[prediction_index];
 		//predictions.reserve(border_length);
+		predictions.resize(border_length);
 		for (unsigned int j = 0; j < border_length; j++)
 		{
 			auto& pt = border.cells[j].pt;
@@ -289,7 +299,7 @@ bool solver::is_prediction_valid(solver_map& map, point_map<bool>& prediction, s
 				++neighboursWithoutMine;
 				break;
 			default:
-				auto& verdict = prediction[neighbour.pt];
+				auto verdict = prediction[neighbour.pt];
 				if (verdict)
 				{
 					++neighbours_with_mine;
