@@ -25,7 +25,8 @@ namespace minedotcpp
 			bool partial_border_solving = true;
 			bool border_resplitting = true;
 			int partial_border_solve_from = 18;
-			int give_up_from = 20;
+			int multithread_from = 22;
+			int give_up_from = 28;
 			int max_partial_border_size = 14;
 			bool set_partially_calculated_probabilities = true;
 		};

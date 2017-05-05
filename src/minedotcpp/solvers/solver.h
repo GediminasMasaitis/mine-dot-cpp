@@ -6,17 +6,17 @@
 #include "../common/map.h"
 #include "border.h"
 
-#include <unordered_map>
+#include <mutex>
 
 
 // TODO: For testing purposes, an easy way to switch between the two. Should be removed in final version
 //#define CELL_INDICES_MAP
 #ifdef CELL_INDICES_MAP
-#define CELL_INDICES_T minedotcpp::common::point_map<int>
+typedef minedotcpp::common::point_map<int> CELL_INDICES_T;
 #define CELL_INDICES_ELEMENT(ci, pt, m) ci[pt]
 #define CELL_INDICES_RESIZE(ci, b, m) ci.resize(b.cells.size())
 #else
-#define CELL_INDICES_T std::vector<int>
+typedef std::vector<int> CELL_INDICES_T;
 #define CELL_INDICES_ELEMENT(ci, pt, m) ci[pt.x * m.width + pt.y]
 #define CELL_INDICES_RESIZE(ci, b, m) ci.resize(m.width * m.height)
 #endif
@@ -42,8 +42,9 @@ namespace minedotcpp
 
 			void solve_border(border& b, solver_map& m, bool allow_partial_border_solving, std::vector<border>& borders) const;
 			void find_valid_border_cell_combinations(solver_map& map, border& border) const;
-			bool is_prediction_valid(solver_map& map, border& b, unsigned prediction, std::vector<common::cell>& empty_cells, CELL_INDICES_T& cell_indices) const;
+			bool is_prediction_valid(const solver_map& map, const border& b, unsigned prediction, const std::vector<common::cell>& empty_cells, const CELL_INDICES_T& cell_indices) const;
 			int SWAR(int i) const;
+			void thr_find_combos(const solver_map& map, border& border, unsigned min, unsigned max, const std::vector<common::cell>& empty_cells, const CELL_INDICES_T& cell_indices, std::mutex& sync) const;
 			void calculate_border_probabilities(border& b) const;
 			void get_verdicts_from_probabilities(common::point_map<double>& probabilities, common::point_map<bool>& target_verdicts) const;
 			void get_partial_border(solver_map& m, common::point_set& allowed_coordinates, common::point target_coordinate, border& target_border) const;

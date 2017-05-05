@@ -1,6 +1,8 @@
 #include "solver.h"
 #include "solver_map.h"
 #include "border.h"
+#include <thread>
+#include <mutex>
 
 using namespace minedotcpp::solvers;
 using namespace minedotcpp::common;
@@ -223,17 +225,55 @@ void solver::solve_border(border& b, solver_map& m, bool allow_partial_border_so
 	borders.push_back(b);
 }
 
+void solver::thr_find_combos(const solver_map& map, border& border, unsigned int min, unsigned int max, const std::vector<cell>& empty_cells, const CELL_INDICES_T& cell_indices, std::mutex& sync) const
+{
+	auto border_length = border.cells.size();
+	auto all_remaining_cells_in_border = map.undecided_count == border_length;
+	for(unsigned int combo = min; combo < max; combo++)
+	{
+		if(map.remaining_mine_count > 0)
+		{
+			auto bits_set = SWAR(combo);
+			if(bits_set > map.remaining_mine_count)
+			{
+				continue;
+			}
+			if(all_remaining_cells_in_border && bits_set != map.remaining_mine_count)
+			{
+				continue;
+			}
+		}
+
+		auto prediction_valid = is_prediction_valid(map, border, combo, empty_cells, cell_indices);
+		if(prediction_valid)
+		{
+			point_map<bool> predictions;
+			predictions.resize(border_length);
+			for(unsigned int j = 0; j < border_length; j++)
+			{
+				auto& pt = border.cells[j].pt;
+				auto has_mine = (combo & (1 << j)) > 0;
+				predictions[pt] = has_mine;
+			}
+			sync.lock();
+			border.valid_combinations.push_back(predictions);
+			sync.unlock();
+		}
+	}
+}
+
 void solver::find_valid_border_cell_combinations(solver_map& map, border& border) const
 {
 	auto border_length = border.cells.size();
-	const int maxSize = 31;
-	if(border_length > maxSize)
+	
+	const int max_size = 31;
+	if(border_length > max_size)
 	{
 		// TODO: handle too big border
 		//throw new InvalidDataException($"Border with {borderLength} cells is too large, maximum {maxSize} cells allowed");
 	}
-	auto totalCombinations = 1 << border_length;
-	auto allRemainingCellsInBorder = map.undecided_count == border_length;
+	unsigned int total_combos = 1 << border_length;
+
 
 	point_set empty_pts;
 	//border.cell_indices.resize(border.cells.size());
@@ -252,53 +292,86 @@ void solver::find_valid_border_cell_combinations(solver_map& map, border& border
 		}
 	}
 
-
+	auto all_remaining_cells_in_border = map.undecided_count == border_length;
 	std::vector<cell> empty_cells;
 	empty_cells.reserve(empty_pts.size());
 	for(auto& pt : empty_pts)
 	{
 		empty_cells.push_back(map.cell_get(pt));
 	}
-	//auto prediction_index = border.valid_combinations.size();
 
-	for(int combo = 0; combo < totalCombinations; combo++)
+	auto thread_count = std::thread::hardware_concurrency();
+	std::mutex sync;
+	if(border_length > settings.multithread_from && thread_count > 1)
 	{
-		if(map.remaining_mine_count > 0)
+		auto thread_load = total_combos / thread_count;
+		std::vector<std::thread> threads;
+		for(auto i = 0; i < thread_count; i++)
 		{
-			auto bits_set = SWAR(combo);
-			if(bits_set > map.remaining_mine_count)
+			unsigned int min = thread_load * i;
+			unsigned int max = min + thread_load;
+			if(i == thread_count - 1)
 			{
-				continue;
+				max = total_combos;
 			}
-			if(allRemainingCellsInBorder && bits_set != map.remaining_mine_count)
-			{
-				continue;
-			}
+			threads.emplace_back([&]() { thr_find_combos(map, border, min, max, empty_cells, cell_indices, sync); });
 		}
 
-		auto prediction_valid = is_prediction_valid(map, border, combo, empty_cells, cell_indices);
-		if(prediction_valid)
+		for(auto& thr : threads)
 		{
-			point_map<bool> predictions;
-			predictions.resize(border_length);
-			for(unsigned int j = 0; j < border_length; j++)
+			thr.join();
+		}
+	}
+	else
+	{
+		// TODO: duplicated code because calling the thread function here directly causes it to slow down about 50% for some reason
+		//thr_find_combos(map, border, 0, total_combos, empty_cells, cell_indices, sync);
+		for(int combo = 0; combo < total_combos; combo++)
+		{
+			if(map.remaining_mine_count > 0)
 			{
-				auto& pt = border.cells[j].pt;
-				auto has_mine = (combo & (1 << j)) > 0;
-				predictions[pt] = has_mine;
+				auto bits_set = SWAR(combo);
+				if(bits_set > map.remaining_mine_count)
+				{
+					continue;
+				}
+				if(all_remaining_cells_in_border && bits_set != map.remaining_mine_count)
+				{
+					continue;
+				}
 			}
-			border.valid_combinations.push_back(predictions);
+
+			auto prediction_valid = is_prediction_valid(map, border, combo, empty_cells, cell_indices);
+			if(prediction_valid)
+			{
+				point_map<bool> predictions;
+				predictions.resize(border_length);
+				for(unsigned int j = 0; j < border_length; j++)
+				{
+					auto& pt = border.cells[j].pt;
+					auto has_mine = (combo & (1 << j)) > 0;
+					predictions[pt] = has_mine;
+				}
+				border.valid_combinations.push_back(predictions);
+			}
 		}
 	}
 }
 
-bool solver::is_prediction_valid(solver_map& map, border& b, unsigned int prediction, std::vector<cell>& empty_cells, CELL_INDICES_T& cell_indices) const
+int solver::SWAR(int i) const
+{
+	i = i - ((i >> 1) & 0x55555555);
+	i = (i & 0x33333333) + ((i >> 2) & 0x33333333);
+	return (((i + (i >> 4)) & 0x0F0F0F0F) * 0x01010101) >> 24;
+}
+
+bool solver::is_prediction_valid(const solver_map& map, const border& b, unsigned int prediction, const std::vector<cell>& empty_cells, const CELL_INDICES_T& cell_indices) const
 {
 	for(auto& cell : empty_cells)
 	{
 		auto neighbours_with_mine = 0;
 		auto neighbours_without_mine = 0;
-		auto& filled_neighbours = map.neighbour_cache_get(cell.pt).by_state[cell_state_filled];
+		auto& filled_neighbours = map.neighbour_cache[cell.pt.x * map.width + cell.pt.y].by_state[cell_state_filled];
 		for(auto& neighbour : filled_neighbours)
 		{
 			auto flag = neighbour.state & cell_flags;
@@ -345,12 +418,7 @@ bool solver::is_prediction_valid(solver_map& map, border& b, unsigned int predic
 	return true;
 }
 
-int solver::SWAR(int i) const
-{
-	i = i - ((i >> 1) & 0x55555555);
-	i = (i & 0x33333333) + ((i >> 2) & 0x33333333);
-	return (((i + (i >> 4)) & 0x0F0F0F0F) * 0x01010101) >> 24;
-}
+
 
 void solver::calculate_border_probabilities(border& b) const
 {
