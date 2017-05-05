@@ -225,41 +225,45 @@ void solver::solve_border(border& b, solver_map& m, bool allow_partial_border_so
 	borders.push_back(b);
 }
 
+#define FIND_COMBOS_BODY \
+for(unsigned int combo = min; combo < max; combo++)\
+{\
+	if(map.remaining_mine_count > 0)\
+	{\
+		auto bits_set = SWAR(combo);\
+		if(bits_set > map.remaining_mine_count)\
+		{\
+			continue;\
+		}\
+		if(all_remaining_cells_in_border && bits_set != map.remaining_mine_count)\
+		{\
+			continue;\
+		}\
+	}\
+\
+	auto prediction_valid = is_prediction_valid(map, border, combo, empty_cells, cell_indices);\
+	if(prediction_valid)\
+	{\
+		point_map<bool> predictions;\
+		predictions.resize(border_length);\
+		for(unsigned int j = 0; j < border_length; j++)\
+		{\
+			auto& pt = border.cells[j].pt;\
+			auto has_mine = (combo & (1 << j)) > 0;\
+			predictions[pt] = has_mine;\
+		}\
+		sync.lock();\
+		border.valid_combinations.push_back(predictions);\
+		sync.unlock();\
+	}\
+}
+
+
 void solver::thr_find_combos(const solver_map& map, border& border, unsigned int min, unsigned int max, const std::vector<cell>& empty_cells, const CELL_INDICES_T& cell_indices, std::mutex& sync) const
 {
 	auto border_length = border.cells.size();
 	auto all_remaining_cells_in_border = map.undecided_count == border_length;
-	for(unsigned int combo = min; combo < max; combo++)
-	{
-		if(map.remaining_mine_count > 0)
-		{
-			auto bits_set = SWAR(combo);
-			if(bits_set > map.remaining_mine_count)
-			{
-				continue;
-			}
-			if(all_remaining_cells_in_border && bits_set != map.remaining_mine_count)
-			{
-				continue;
-			}
-		}
-
-		auto prediction_valid = is_prediction_valid(map, border, combo, empty_cells, cell_indices);
-		if(prediction_valid)
-		{
-			point_map<bool> predictions;
-			predictions.resize(border_length);
-			for(unsigned int j = 0; j < border_length; j++)
-			{
-				auto& pt = border.cells[j].pt;
-				auto has_mine = (combo & (1 << j)) > 0;
-				predictions[pt] = has_mine;
-			}
-			sync.lock();
-			border.valid_combinations.push_back(predictions);
-			sync.unlock();
-		}
-	}
+	FIND_COMBOS_BODY
 }
 
 void solver::find_valid_border_cell_combinations(solver_map& map, border& border) const
@@ -325,36 +329,10 @@ void solver::find_valid_border_cell_combinations(solver_map& map, border& border
 	else
 	{
 		// TODO: duplicated code because calling the thread function here directly causes it to slow down about 50% for some reason
+		unsigned int min = 0;
+		unsigned int max = total_combos;
 		//thr_find_combos(map, border, 0, total_combos, empty_cells, cell_indices, sync);
-		for(int combo = 0; combo < total_combos; combo++)
-		{
-			if(map.remaining_mine_count > 0)
-			{
-				auto bits_set = SWAR(combo);
-				if(bits_set > map.remaining_mine_count)
-				{
-					continue;
-				}
-				if(all_remaining_cells_in_border && bits_set != map.remaining_mine_count)
-				{
-					continue;
-				}
-			}
-
-			auto prediction_valid = is_prediction_valid(map, border, combo, empty_cells, cell_indices);
-			if(prediction_valid)
-			{
-				point_map<bool> predictions;
-				predictions.resize(border_length);
-				for(unsigned int j = 0; j < border_length; j++)
-				{
-					auto& pt = border.cells[j].pt;
-					auto has_mine = (combo & (1 << j)) > 0;
-					predictions[pt] = has_mine;
-				}
-				border.valid_combinations.push_back(predictions);
-			}
-		}
+		FIND_COMBOS_BODY
 	}
 }
 
