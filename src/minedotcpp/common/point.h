@@ -40,10 +40,8 @@ namespace minedotcpp
 		public:
 			inline point_map()
 			{
-				point pt = { -1,-1 };
-				point deleted_pt = { -2,-2 };
-				set_empty_key(pt);
-				set_deleted_key(deleted_pt);
+				point_map::set_empty_key({ -1,-1 });
+				point_map::set_deleted_key({ -2,-2 });
 			}
 		};
 
@@ -54,10 +52,8 @@ namespace minedotcpp
 		public:
 			inline point_set()
 			{
-				point empty_pt = { -1,-1 };
-				point deleted_pt = { -2,-2 };
-				set_empty_key(empty_pt);
-				set_deleted_key(deleted_pt);
+				set_empty_key({ -1,-1 });
+				set_deleted_key({ -2,-2 });
 			}
 		};
 	}
