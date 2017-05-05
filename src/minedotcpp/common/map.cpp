@@ -42,7 +42,7 @@ cell* map::cell_try_get(int x, int y)
 
 inline bool map::cell_exists(int x, int y)
 {
-	return x >= 0 && y >= 0 && x < width && y < height && cells[x, y].state != cell_state_wall;
+	return x >= 0 && y >= 0 && x < width && y < height && cell_get(x, y).state != cell_state_wall;
 }
 
 inline bool map::cell_exists(point pt)
