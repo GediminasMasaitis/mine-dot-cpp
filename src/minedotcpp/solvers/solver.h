@@ -8,6 +8,19 @@
 
 #include <unordered_map>
 
+
+// TODO: For testing purposes, an easy way to switch between the two. Should be removed in final version
+//#define CELL_INDICES_MAP
+#ifdef CELL_INDICES_MAP
+#define CELL_INDICES_T common::point_map<int>
+#define CELL_INDICES_ELEMENT(ci, pt, m) ci[pt]
+#define CELL_INDICES_RESIZE(ci, b, m) ci.resize(b.cells.size())
+#else
+#define CELL_INDICES_T std::vector<int>
+#define CELL_INDICES_ELEMENT(ci, pt, m) ci[pt.x * m.width + pt.y]
+#define CELL_INDICES_RESIZE(ci, b, m) ci.resize(m.width * m.height)
+#endif
+
 namespace minedotcpp
 {
 	namespace solvers
@@ -29,7 +42,7 @@ namespace minedotcpp
 
 			void solve_border(border& b, solver_map& m, bool allow_partial_border_solving, std::vector<border>& borders) const;
 			void find_valid_border_cell_combinations(solver_map& map, border& border) const;
-			bool is_prediction_valid(solver_map& map, border& b, unsigned prediction, std::vector<common::cell>& empty_cells) const;
+			bool is_prediction_valid(solver_map& map, border& b, unsigned prediction, std::vector<common::cell>& empty_cells, std::vector<int>& cell_indices) const;
 			int SWAR(int i) const;
 			void calculate_border_probabilities(border& b) const;
 			void get_verdicts_from_probabilities(common::point_map<double>& probabilities, common::point_map<bool>& target_verdicts) const;

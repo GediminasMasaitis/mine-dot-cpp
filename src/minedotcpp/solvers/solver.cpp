@@ -231,13 +231,15 @@ void solver::find_valid_border_cell_combinations(solver_map& map, border& border
 	auto allRemainingCellsInBorder = map.undecided_count == border_length;
 
 	point_set empty_pts;
-	border.cell_indices.resize(border.cells.size());
-	//auto cell_index = 0;
-	//for(auto& c : border.cells)
+	//border.cell_indices.resize(border.cells.size());
+	CELL_INDICES_T cell_indices;
+	CELL_INDICES_RESIZE(cell_indices, border, map);
+	//border.cell_indices.resize(map.width * map.height);
 	for(auto i = 0; i < border.cells.size(); i++)
 	{
 		auto& c = border.cells[i];
-		border.cell_indices[c.pt] = i;
+		CELL_INDICES_ELEMENT(cell_indices, c.pt, map) = i;
+		//border.cell_indices[c.pt] = i;
 		auto& entry = map.neighbour_cache_get(c.pt).by_state[cell_state_empty];
 		for (auto& cell : entry)
 		{
@@ -269,7 +271,7 @@ void solver::find_valid_border_cell_combinations(solver_map& map, border& border
 			}
 		}
 		
-		auto prediction_valid = is_prediction_valid(map, border, combo, empty_cells);
+		auto prediction_valid = is_prediction_valid(map, border, combo, empty_cells, cell_indices);
 		if (prediction_valid)
 		{
 			point_map<bool> predictions;
@@ -285,7 +287,7 @@ void solver::find_valid_border_cell_combinations(solver_map& map, border& border
 	}
 }
 
-bool solver::is_prediction_valid(solver_map& map, border& b, unsigned int prediction, std::vector<cell>& empty_cells) const
+bool solver::is_prediction_valid(solver_map& map, border& b, unsigned int prediction, std::vector<cell>& empty_cells, CELL_INDICES_T& cell_indices) const
 {
 	for (auto& cell : empty_cells)
 	{
@@ -312,7 +314,8 @@ bool solver::is_prediction_valid(solver_map& map, border& b, unsigned int predic
 						break;
 					}
 				}*/
-				unsigned int i = b.cell_indices[neighbour.pt];
+				unsigned int i = CELL_INDICES_ELEMENT(cell_indices, neighbour.pt, map);
+				//unsigned int i = b.cell_indices[neighbour.pt];
 				auto verdict = (prediction & (1 << i)) > 0;
 				if (verdict)
 				{
