@@ -231,8 +231,13 @@ void solver::find_valid_border_cell_combinations(solver_map& map, border& border
 	auto allRemainingCellsInBorder = map.undecided_count == border_length;
 
 	point_set empty_pts;
-	for(auto& c : border.cells)
+	border.cell_indices.resize(border.cells.size());
+	//auto cell_index = 0;
+	//for(auto& c : border.cells)
+	for(auto i = 0; i < border.cells.size(); i++)
 	{
+		auto& c = border.cells[i];
+		border.cell_indices[c.pt] = i;
 		auto& entry = map.neighbour_cache_get(c.pt).by_state[cell_state_empty];
 		for (auto& cell : entry)
 		{
@@ -299,14 +304,15 @@ bool solver::is_prediction_valid(solver_map& map, border& b, unsigned int predic
 				++neighbours_without_mine;
 				break;
 			default:
-				unsigned int i;
+				/*unsigned int i;
 				for(i = 0; i < b.cells.size(); i++)
 				{
 					if(neighbour.pt == b.cells[i].pt)
 					{
 						break;
 					}
-				}
+				}*/
+				unsigned int i = b.cell_indices[neighbour.pt];
 				auto verdict = (prediction & (1 << i)) > 0;
 				if (verdict)
 				{

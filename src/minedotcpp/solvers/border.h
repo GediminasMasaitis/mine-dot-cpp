@@ -15,6 +15,7 @@ namespace minedotcpp
 			common::point_map<double> probabilities;
 			common::point_map<bool> verdicts;
 			bool solved_fully;
+			common::point_map<int> cell_indices;
 		};
 	}
 }
