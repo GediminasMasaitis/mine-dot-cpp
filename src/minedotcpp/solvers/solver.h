@@ -29,7 +29,7 @@ namespace minedotcpp
 
 			void solve_border(border& b, solver_map& m, bool allow_partial_border_solving, std::vector<border>& borders) const;
 			void find_valid_border_cell_combinations(solver_map& map, border& border) const;
-			bool is_prediction_valid(solver_map& map, common::point_map<bool>& prediction, std::vector<common::cell>& empty_cells) const;
+			bool is_prediction_valid(solver_map& map, border& b, unsigned prediction, std::vector<common::cell>& empty_cells) const;
 			int SWAR(int i) const;
 			void calculate_border_probabilities(border& b) const;
 			void get_verdicts_from_probabilities(common::point_map<double>& probabilities, common::point_map<bool>& target_verdicts) const;

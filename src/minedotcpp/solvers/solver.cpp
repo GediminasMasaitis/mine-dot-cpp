@@ -242,6 +242,7 @@ void solver::find_valid_border_cell_combinations(solver_map& map, border& border
 	
 
 	std::vector<cell> empty_cells;
+	empty_cells.reserve(empty_pts.size());
 	for(auto& pt : empty_pts)
 	{
 		empty_cells.push_back(map.cell_get(pt));
@@ -262,32 +263,31 @@ void solver::find_valid_border_cell_combinations(solver_map& map, border& border
 				continue;
 			}
 		}
-		point_map<bool> predictions;
-		//auto& predictions = border.valid_combinations[prediction_index];
-		//predictions.reserve(border_length);
-		predictions.resize(border_length);
-		for (unsigned int j = 0; j < border_length; j++)
-		{
-			auto& pt = border.cells[j].pt;
-			auto has_mine = (combo & (1 << j)) > 0;
-			predictions[pt] = has_mine;
-		}
-		auto prediction_valid = is_prediction_valid(map, predictions, empty_cells);
+		
+		auto prediction_valid = is_prediction_valid(map, border, combo, empty_cells);
 		if (prediction_valid)
 		{
+			point_map<bool> predictions;
+			predictions.resize(border_length);
+			for (unsigned int j = 0; j < border_length; j++)
+			{
+				auto& pt = border.cells[j].pt;
+				auto has_mine = (combo & (1 << j)) > 0;
+				predictions[pt] = has_mine;
+			}
 			border.valid_combinations.push_back(predictions);
 		}
 	}
 }
 
-bool solver::is_prediction_valid(solver_map& map, point_map<bool>& prediction, std::vector<cell>& empty_cells) const
+bool solver::is_prediction_valid(solver_map& map, border& b, unsigned int prediction, std::vector<cell>& empty_cells) const
 {
-	for(auto& cell : empty_cells)
+	for (auto& cell : empty_cells)
 	{
 		auto neighbours_with_mine = 0;
-		auto neighboursWithoutMine = 0;
-		auto filled_neighbours = map.neighbour_cache_get(cell.pt).by_state[cell_state_filled];
-		for(auto& neighbour : filled_neighbours)
+		auto neighbours_without_mine = 0;
+		auto& filled_neighbours = map.neighbour_cache_get(cell.pt).by_state[cell_state_filled];
+		for (auto& neighbour : filled_neighbours)
 		{
 			auto flag = neighbour.state & cell_flags;
 			switch (flag)
@@ -296,29 +296,37 @@ bool solver::is_prediction_valid(solver_map& map, point_map<bool>& prediction, s
 				++neighbours_with_mine;
 				break;
 			case cell_flag_doesnt_have_mine:
-				++neighboursWithoutMine;
+				++neighbours_without_mine;
 				break;
 			default:
-				auto verdict = prediction[neighbour.pt];
+				unsigned int i;
+				for(i = 0; i < b.cells.size(); i++)
+				{
+					if(neighbour.pt == b.cells[i].pt)
+					{
+						break;
+					}
+				}
+				auto verdict = (prediction & (1 << i)) > 0;
 				if (verdict)
 				{
 					++neighbours_with_mine;
 				}
 				else
 				{
-					++neighboursWithoutMine;
+					++neighbours_without_mine;
 				}
 				break;
 			}
 		}
-		if (neighbours_with_mine > cell.hint)
+
+		if (neighbours_with_mine != cell.hint)
 			return false;
-		if (filled_neighbours.size() - neighboursWithoutMine < cell.hint)
-			return false;
-		//if (foundUnknownCell)
-		//	continue;
-		if (cell.hint != neighbours_with_mine)
-			return false;
+		
+		// TODO: What does this do?
+		//if (filled_neighbours.size() - neighbours_without_mine < cell.hint)
+		//	return false;
+
 	}
 	return true;
 }
