@@ -8,20 +8,20 @@ using namespace minedotcpp::common;
 using namespace minedotcpp::mapio;
 
 
-string text_map_visualizer::visualize_to_string(map* map) const
+string text_map_visualizer::visualize_to_string(minedotcpp::common::map& m) const
 {
 	ostringstream oss;
-	visualize(map, oss);
+	visualize(m, oss);
 	return oss.str();
 }
 
-void text_map_visualizer::visualize(map* map, ostream& os) const
+void text_map_visualizer::visualize(minedotcpp::common::map& m, ostream& os) const
 {
-	for (int i = 0; i < map->width; i++)
+	for (int i = 0; i < m.width; i++)
 	{
-		for (int j = 0; j < map->height; j++)
+		for (int j = 0; j < m.height; j++)
 		{
-			auto cell = map->cell_get(i, j);
+			auto& cell = m.cell_get(i, j);
 			auto state = cell.state & cell_states;
 			switch(state)
 			{

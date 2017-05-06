@@ -19,7 +19,7 @@ namespace minedotcpp
 			std::vector<cell> cells;
 			
 
-			map(int width, int height, int remaining_mine_count = -1);
+			map(int width, int height, int remaining_mine_count = -1, cell_param state = cell_state_empty);
 
 			inline cell& cell_get(int x, int y) { return cells[x*height + y]; }
 			inline cell& cell_get(point pt) { return cell_get(pt.x, pt.y);	}

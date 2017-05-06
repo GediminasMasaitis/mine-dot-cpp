@@ -9,7 +9,7 @@ map::map()
 	
 }
 
-map::map(int width, int height, int remaining_mine_count)
+map::map(int width, int height, int remaining_mine_count, cell_param state)
 {
 	this->width = width;
 	this->height = height;
@@ -23,6 +23,8 @@ map::map(int width, int height, int remaining_mine_count)
 			auto& cell = cell_get(i, j);
 			cell.pt.x = i;
 			cell.pt.y = j;
+			cell.state = state;
+			cell.hint = 0;
 		}
 	}
 }

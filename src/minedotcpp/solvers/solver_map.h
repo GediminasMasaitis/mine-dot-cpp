@@ -18,7 +18,8 @@ namespace minedotcpp
 			int undecided_count;
 			std::vector<common::neighbour_cache_entry> neighbour_cache;
 
-			solver_map(const map& base_map);
+			void init_from(const map& base_map);
+			void calculate_additional_data();
 			inline common::neighbour_cache_entry& neighbour_cache_get(int x, int y) { return neighbour_cache[x*height + y]; }
 			inline common::neighbour_cache_entry& neighbour_cache_get(common::point pt) { return neighbour_cache_get(pt.x, pt.y); }
 

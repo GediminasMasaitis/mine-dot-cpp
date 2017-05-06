@@ -6,6 +6,7 @@
 #include "mapio/text_map_visualizer.h"
 #include "solvers/solver.h"
 #include <chrono>
+#include "debug/debugging.h"
 
 using namespace std;
 using namespace minedotcpp::common;
@@ -99,8 +100,9 @@ int main(int argc, char* argv[])
 	
 	cout << endl << "That took " << std::chrono::duration_cast<std::chrono::milliseconds>(diff).count() << " ms" << endl << endl;
 	print_results(results);
+	visualize_external(*test_map, *results);
 	delete results;
-	auto str = visualizer.visualize_to_string(test_map);
+	auto str = visualizer.visualize_to_string(*test_map);
 	cout << str << endl;
 	strm.close();
 	cout << "Press any key to continue" << endl;
