@@ -90,7 +90,7 @@ int main(int argc, char* argv[])
 	}
 
 	solver_settings settings;
-	settings.solve_trivial = false;
+	settings.trivial_solve = false;
 	solver s(settings);
 	std::chrono::high_resolution_clock clock;
 	auto start_time = clock.now();

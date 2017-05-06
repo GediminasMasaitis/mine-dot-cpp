@@ -54,8 +54,7 @@ namespace minedotcpp
 			void separate_borders(solver_map& m, border& common_border, std::vector<border>& target_borders) const;
 			bool is_cell_border(solver_map& m, common::cell& c) const;
 			void find_common_border(solver_map& m, border& common_border) const;
-
-			bool should_stop_solving(common::point_map<bool>& verdicts) const;
+			bool should_stop_solving(common::point_map<bool>& verdicts, bool stop_on_no_mine_verdict, bool stop_on_any_verdict, bool stop_always) const;
 			common::point_map<solver_result>* get_final_results(common::point_map<double>& probabilities, common::point_map<bool>& verdicts) const;
 		};
 	}

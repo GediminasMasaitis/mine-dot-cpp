@@ -17,7 +17,7 @@ point_map<solver_result>* solver::solve(const map& base_map) const
 {
 	solver_map m;
 	m.init_from(base_map);
-	if(settings.ignore_mine_count_completely)
+	if(settings.mine_count_ignore_completely)
 	{
 		m.remaining_mine_count = -1;
 	}
@@ -26,10 +26,10 @@ point_map<solver_result>* solver::solve(const map& base_map) const
 	point_map<bool> all_verdicts;
 
 
-	if(settings.solve_trivial)
+	if(settings.trivial_solve)
 	{
 		solve_trivial(m, all_verdicts);
-		if(settings.stop_after_trivial_solving || should_stop_solving(all_verdicts))
+		if(should_stop_solving(all_verdicts, settings.trivial_stop_on_no_mine_verdict, settings.trivial_stop_on_any_verdict, settings.trivial_stop_always))
 		{
 			return get_final_results(all_probabilities, all_verdicts);
 		}
@@ -114,38 +114,33 @@ void solver::solve_separation(solver_map& m, point_map<double>& probabilities, p
 		{
 			probabilities[probability.first] = probability.second;
 		}
-		if(should_stop_solving(verdicts))
-		{
-			return;
-		}
 	}
 }
 
 void solver::solve_border(border& b, solver_map& m, bool allow_partial_border_solving, std::vector<border>& borders) const
 {
-	if(settings.partial_border_solving)
+	if(settings.partial_solve)
 	{
-		if(allow_partial_border_solving && b.cells.size() > settings.partial_border_solve_from)
+		if(allow_partial_border_solving && b.cells.size() > settings.partial_solve_from_size)
 		{
 			try_solve_border_by_partial_borders(m, b);
-		}
-		if(should_stop_solving(b.verdicts))
-		{
-			borders.push_back(b);
-			return;
-		}
-
-		if(settings.border_resplitting && b.verdicts.size() > 0)
-		{
-			//var borders = TrySolveBorderByReseparating(b, m);
-			//if (borders != null)
-			//{
-			//	return borders;
-			//}
+			if(should_stop_solving(b.verdicts, settings.partial_all_stop_on_no_mine_verdict, settings.partial_all_stop_on_any_verdict, settings.partial_stop_always))
+			{
+				borders.push_back(b);
+				return;
+			}
+			if(settings.resplit_on_partial_verdict && b.verdicts.size() > 0)
+			{
+				//var borders = TrySolveBorderByReseparating(b, m);
+				//if (borders != null)
+				//{
+				//	return borders;
+				//}
+			}
 		}
 	}
 
-	if(b.cells.size() > settings.give_up_from)
+	if(b.cells.size() > settings.give_up_from_size)
 	{
 		b.solved_fully = false;
 		borders.push_back(b);
@@ -290,12 +285,12 @@ void solver::try_solve_border_by_partial_borders(solver_map& m, border& b) const
 			}
 			b.cells.erase(b.cells.begin() + cell_index);
 		}
-		if(should_stop_solving(b.verdicts))
+		if(should_stop_solving(b.verdicts, settings.partial_single_stop_on_no_mine_verdict, settings.partial_single_stop_on_any_verdict, false))
 		{
 			return;
 		}
 		checked_partial_borders.push_back(border_data);
-		if(settings.set_partially_calculated_probabilities && verdicts.find(target_coordinate) == verdicts.end())
+		if(settings.partial_set_probability_guesses && verdicts.find(target_coordinate) == verdicts.end())
 		{
 			auto it = border_data.partial_border.probabilities.find(target_coordinate);
 			if(it != border_data.partial_border.probabilities.end())
@@ -414,7 +409,7 @@ void solver::get_partial_border(border& border, solver_map& map, point target_pt
 	for(auto cell : partial_border_sequence)
 	{
 		partial_border_cells.push_back(cell);
-		if(partial_border_cells.size() < settings.max_partial_border_size)
+		if(partial_border_cells.size() < settings.partial_optimal_size)
 		{
 			continue;
 		}
@@ -422,7 +417,7 @@ void solver::get_partial_border(border& border, solver_map& map, point target_pt
 		partial_border_candidate.cells = partial_border_cells;
 		solvers::solver_map partial_map_candidate;
 		calculate_partial_map_and_trim_partial_border(partial_border_candidate, partial_map_candidate, map, all_flagged_coordinates);
-		if(partial_border_candidate.cells.size() > settings.max_partial_border_size)
+		if(partial_border_candidate.cells.size() > settings.partial_optimal_size)
 		{
 			break;
 		}
@@ -523,7 +518,7 @@ void solver::find_valid_border_cell_combinations(solver_map& map, border& border
 
 	auto thread_count = std::thread::hardware_concurrency();
 	std::mutex sync;
-	if(border_length > settings.multithread_from && thread_count > 1)
+	if(border_length > settings.multithread_valid_combination_search_from_size && thread_count > 1)
 	{
 		auto thread_load = total_combos / thread_count;
 		std::vector<std::thread> threads;
@@ -731,17 +726,21 @@ void solver::find_common_border(solver_map& m, border& common_border) const
 	}
 }
 
-bool solver::should_stop_solving(point_map<bool>& verdicts) const
+bool solver::should_stop_solving(point_map<bool>& verdicts, bool stop_on_no_mine_verdict, bool stop_on_any_verdict, bool stop_always) const
 {
+	if(stop_always)
+	{
+		return true;
+	}
 	if(verdicts.size() == 0)
 	{
 		return false;
 	}
-	if(settings.stop_on_any_verdict)
+	if(stop_on_any_verdict)
 	{
 		return true;
 	}
-	if(settings.stop_on_no_mine_verdict)
+	if(stop_on_no_mine_verdict)
 	{
 		for(auto& verdict : verdicts)
 		{
