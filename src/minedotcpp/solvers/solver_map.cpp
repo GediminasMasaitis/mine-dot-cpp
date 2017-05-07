@@ -59,10 +59,25 @@ void solver_map::build_neighbour_cache()
 	{
 		for (short j = 0; j < height; ++j)
 		{
-			auto& cache_entry = neighbour_cache[i*height + j];
+			auto& entry = neighbour_cache[i*height + j];
 			auto cell = cell_get(i, j);
-			calculate_neighbours_of(cell.pt, cache_entry.all_neighbours, false);
-			build_additional_neighbour_lists(cache_entry);
+			if(entry.initialized)
+			{
+				entry.all_neighbours.clear();
+				for(auto k = 0; k < 4; k++)
+				{
+					entry.by_state[k].clear();
+				}
+				for(auto k = 0; k < 16; k++)
+				{
+					entry.by_flag[k].clear();
+					entry.by_param[k].clear();
+				}
+
+			}
+			calculate_neighbours_of(cell.pt, entry.all_neighbours, false);
+			build_additional_neighbour_lists(entry);
+			entry.initialized = true;
 		}
 	}
 }
@@ -70,7 +85,7 @@ void solver_map::build_neighbour_cache()
 void solver_map::set_cells_by_verdicts(point_map<bool>& verdicts)
 {
 	std::unordered_set<point, point_hash> points_to_update;
-	for(auto result : verdicts)
+	for(auto& result : verdicts)
 	{
 		auto& cell = cell_get(result.first);
 		if (result.second)
@@ -90,7 +105,7 @@ void solver_map::set_cells_by_verdicts(point_map<bool>& verdicts)
 			undecided_count--;
 		}
 		auto& entry = neighbour_cache_get(result.first);
-		for(auto neighbour : entry.all_neighbours)
+		for(auto& neighbour : entry.all_neighbours)
 		{
 			points_to_update.insert(neighbour.pt);
 		}
@@ -104,6 +119,8 @@ void solver_map::set_cells_by_verdicts(point_map<bool>& verdicts)
 void solver_map::update_neighbour_cache(point pt)
 {
 	auto& entry = neighbour_cache_get(pt);
+	entry.all_neighbours.clear();
+	calculate_neighbours_of(pt, entry.all_neighbours, false);
 	for(auto i = 0; i < 4; i++)
 	{
 		entry.by_state[i].clear();
@@ -111,6 +128,11 @@ void solver_map::update_neighbour_cache(point pt)
 		entry.by_param[i].clear();
 		entry.by_param[(cell_state_filled | i << 2)].clear();
 	}
+	/*for(auto i = 0; i < 16; i++)
+	{
+		entry.by_flag[i].clear();
+		entry.by_param[i].clear();
+	}*/
 	build_additional_neighbour_lists(entry);
 }
 

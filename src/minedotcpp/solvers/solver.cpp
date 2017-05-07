@@ -3,6 +3,7 @@
 #include "border.h"
 #include <thread>
 #include <mutex>
+#include <queue>
 #include "../debug/debugging.h"
 
 using namespace minedotcpp::solvers;
@@ -227,7 +228,6 @@ void solver::solve_border(border& b, solver_map& m, bool allow_partial_border_so
 
 void solver::try_solve_border_by_partial_borders(solver_map& m, border& b) const
 {
-
 	std::vector<partial_border_data> checked_partial_borders;
 	for(auto i = 0; i < b.cells.size(); i++)
 	{
@@ -265,31 +265,34 @@ void solver::try_solve_border_by_partial_borders(solver_map& m, border& b) const
 		
 		std::vector<border> temp;
 		solve_border(border_data.partial_border, border_data.partial_map, false, temp);
-		auto& verdicts = border_data.partial_border.verdicts;
-		m.set_cells_by_verdicts(verdicts);
-		for(auto& verdict : verdicts)
-		{
-			auto& cell = m[verdict.first];
-			b.verdicts[verdict.first] = verdict.second;
-			int cell_index; 
-			for(cell_index = 0; cell_index < b.cells.size(); cell_index++)
-			{
-				if(b.cells[cell_index].pt == cell.pt)
-				{
-					break;
-				}
-			}
-			if(cell_index <= i)
-			{
-				i--;
-			}
-			b.cells.erase(b.cells.begin() + cell_index);
-		}
-		if(should_stop_solving(b.verdicts, settings.partial_single_stop_on_no_mine_verdict, settings.partial_single_stop_on_any_verdict, false))
-		{
-			return;
-		}
 		checked_partial_borders.push_back(border_data);
+		auto& verdicts = border_data.partial_border.verdicts;
+		if(verdicts.size() > 0)
+		{
+			m.set_cells_by_verdicts(verdicts);
+			for(auto& verdict : verdicts)
+			{
+				auto& cell = m[verdict.first];
+				b.verdicts[verdict.first] = verdict.second;
+				int cell_index;
+				for(cell_index = 0; cell_index < b.cells.size(); cell_index++)
+				{
+					if(b.cells[cell_index].pt == cell.pt)
+					{
+						break;
+					}
+				}
+				if(cell_index <= i)
+				{
+					i--;
+				}
+				b.cells.erase(b.cells.begin() + cell_index);
+			}
+			if(should_stop_solving(b.verdicts, settings.partial_single_stop_on_no_mine_verdict, settings.partial_single_stop_on_any_verdict, false))
+			{
+				return;
+			}
+		}
 		if(settings.partial_set_probability_guesses && verdicts.find(target_coordinate) == verdicts.end())
 		{
 			auto it = border_data.partial_border.probabilities.find(target_coordinate);

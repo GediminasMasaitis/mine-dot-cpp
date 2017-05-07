@@ -70,6 +70,10 @@ for(auto line : lines)
 				c.state = cell_state_filled | cell_flag_has_mine;
 				c.hint = 0;
 				break;
+			case 'v':
+				c.state = cell_state_filled | cell_flag_doesnt_have_mine;
+				c.hint = 0;
+				break;
 			case 'X':
 				c.state = cell_state_wall;
 				c.hint = 0;

@@ -9,6 +9,7 @@ namespace minedotcpp
 		class neighbour_cache_entry
 		{
 		public:
+			bool initialized = false;
 			std::vector<cell> all_neighbours;
 			std::vector<cell> by_state[4];
 			std::vector<cell> by_flag[16];

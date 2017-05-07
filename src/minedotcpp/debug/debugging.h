@@ -3,6 +3,18 @@
 #include "../mapio/text_map_visualizer.h"
 #include <sstream>
 
+static void dump_predictions(std::vector<minedotcpp::common::point_map<bool>>& predictions)
+{
+	for(auto& prediction : predictions)
+	{
+		for(auto& entry : prediction)
+		{
+			putc(entry.second ? '+' : ' ', stdout);
+		}
+		putc('\n', stdout);
+	}
+}
+
 static void visualize(minedotcpp::common::map& m, std::vector<std::vector<minedotcpp::common::point>> regions, bool external)
 {
 	auto visualizer_path = "C:/Temp/Visualizer/MineDotNet.GUI.exe";
@@ -66,11 +78,14 @@ static void visualize(minedotcpp::common::map& m, std::vector<std::vector<minedo
 	
 	if(external)
 	{
-		system(ss.str().c_str());
+		auto str = ss.str();
+		system(str.c_str());
 	}
 	else
 	{
-		puts(ss.str().c_str());
+		auto str = ss.str();
+		std::replace(str.begin(), str.end(), 'X', ' ');
+		puts(str.c_str());
 	}
 }
 
