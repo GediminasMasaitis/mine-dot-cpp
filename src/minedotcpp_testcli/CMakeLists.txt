@@ -10,6 +10,7 @@ if(shared)
 	add_definitions(-DSHARED_LIB)
 endif()
 include_directories(${CMAKE_SOURCE_DIR}/src/minedotcpp)
+include_directories(${CMAKE_SOURCE_DIR}/external/sparsehash)
 target_link_libraries(minedotcpp_testcli minedotcpp)
 
 install(TARGETS minedotcpp_testcli RUNTIME DESTINATION bin)

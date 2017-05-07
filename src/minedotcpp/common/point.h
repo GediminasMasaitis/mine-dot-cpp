@@ -1,9 +1,6 @@
 #pragma once
-#include <unordered_map>
-#include <unordered_set>
-#include <queue>
-#include "../sparsehash/dense_hash_map"
-#include "../sparsehash/dense_hash_set"
+#include <sparsehash/dense_hash_map>
+#include <sparsehash/dense_hash_set>
 
 namespace minedotcpp
 {
