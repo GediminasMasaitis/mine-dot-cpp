@@ -7,6 +7,10 @@
 #include "solvers/solver.h"
 #include <chrono>
 #include "debug/debugging.h"
+#ifdef _WIN32
+#include <windows.h>
+#endif
+
 
 using namespace std;
 using namespace minedotcpp::common;
@@ -28,6 +32,19 @@ void print_results(point_map<solver_result>* results)
 
 int main(int argc, char* argv[])
 {
+#ifdef _WIN32
+	COORD coord = {300,1000};
+	HANDLE handle = GetStdHandle(STD_OUTPUT_HANDLE);
+	SetConsoleScreenBufferSize(handle, coord);
+
+	HWND wh = GetConsoleWindow();
+	RECT rect = { NULL };
+	GetWindowRect(wh, &rect);
+	// Move window to required position
+	//MoveWindow(wh, rect.left, rect.top, 640, 900, TRUE);
+	MoveWindow(wh, rect.left, 50, 800, 950, TRUE);
+#endif
+
 	/* std::chrono::high_resolution_clock cl;
 	auto b = cl.now();
 	for (int j = 0; j < 20000; j++)
@@ -100,7 +117,7 @@ int main(int argc, char* argv[])
 	
 	cout << endl << "That took " << std::chrono::duration_cast<std::chrono::milliseconds>(diff).count() << " ms" << endl << endl;
 	print_results(results);
-	visualize_external(*test_map, *results);
+	//visualize_external(*test_map, *results);
 	delete results;
 	auto str = visualizer.visualize_to_string(*test_map);
 	cout << str << endl;

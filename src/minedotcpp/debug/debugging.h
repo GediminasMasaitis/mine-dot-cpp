@@ -1,13 +1,18 @@
 #pragma once
 #include "../common/map.h"
 #include "../mapio/text_map_visualizer.h"
+#include <sstream>
 
-static void visualize_external(minedotcpp::common::map& m, std::vector<std::vector<minedotcpp::common::point>> regions)
+static void visualize(minedotcpp::common::map& m, std::vector<std::vector<minedotcpp::common::point>> regions, bool external)
 {
 	auto visualizer_path = "C:/Temp/Visualizer/MineDotNet.GUI.exe";
 	minedotcpp::mapio::text_map_visualizer visualizer;
-	std::vector<minedotcpp::common::map> maps;
-	maps.push_back(m);
+	std::vector<std::string> maps;
+	if(m.width > 0 && m.height > 0)
+	{
+		auto str = visualizer.visualize_to_string(m);
+		maps.push_back(str);
+	}
 
 	for(auto& region : regions)
 	{
@@ -16,23 +21,60 @@ static void visualize_external(minedotcpp::common::map& m, std::vector<std::vect
 		{
 			mask_map.cell_get(coord).state = minedotcpp::common::cell_state_filled;
 		}
-		maps.push_back(mask_map);
+		auto str = visualizer.visualize_to_string(mask_map);
+		maps.push_back(str);
 	}
-	std::string parameter_str = "start \"\" \"";
-	parameter_str.append(visualizer_path);
-	parameter_str.append("\" ");
-	for(auto& mp : maps)
+	std::ostringstream ss;
+	if(external)
 	{
-		auto str = visualizer.visualize_to_string(mp);
-		str.erase(std::remove(str.begin(), str.end(), '\r'), str.end());
-		std::replace(str.begin(), str.end(), '\n', ';');
-		parameter_str.append(" ");
-		parameter_str.append(str);
+		ss << "start \"\" \"" << visualizer_path << "\" ";
 	}
-	system(parameter_str.c_str());
+	
+	//std::istringstream mapss(str);
+	if(external)
+	{
+		for(auto& str : maps)
+		{
+			str.erase(std::remove(str.begin(), str.end(), '\r'), str.end());
+			std::replace(str.begin(), str.end(), '\n', ';');
+			ss << " ";
+			ss << str;
+		}
+	}
+	else
+	{
+		std::vector<std::istringstream> mapsss;
+		for(auto& str : maps)
+		{
+			mapsss.push_back(std::istringstream(str));
+		}
+
+		for(auto i = 0; i < m.height; i++)
+		{
+			for(auto& mapss : mapsss)
+			{
+				std::string s;
+				if(std::getline(mapss, s, '\n'))
+				{
+					ss << s << "   ";
+				}
+			}
+			ss << std::endl;
+		}
+		ss << std::endl << std::endl;
+	}
+	
+	if(external)
+	{
+		system(ss.str().c_str());
+	}
+	else
+	{
+		puts(ss.str().c_str());
+	}
 }
 
-static void visualize_external(minedotcpp::common::map& m, std::vector<minedotcpp::solvers::border> borders)
+static void visualize(minedotcpp::common::map& m, std::vector<minedotcpp::solvers::border> borders, bool external)
 {
 	std::vector<std::vector<minedotcpp::common::point>> pts;
 	for(auto& b : borders)
@@ -45,10 +87,10 @@ static void visualize_external(minedotcpp::common::map& m, std::vector<minedotcp
 		}
 		pts.push_back(bpts);
 	}
-	visualize_external(m, pts);
+	visualize(m, pts, external);
 }
 
-static void visualize_external(minedotcpp::common::map& m, minedotcpp::common::point_map<minedotcpp::solvers::solver_result> results)
+static void visualize(minedotcpp::common::map& m, minedotcpp::common::point_map<minedotcpp::solvers::solver_result> results, bool external)
 {
 	std::vector<minedotcpp::common::point> pts_safe;
 	std::vector<minedotcpp::common::point> pts_mine;
@@ -63,5 +105,5 @@ static void visualize_external(minedotcpp::common::map& m, minedotcpp::common::p
 			pts_safe.push_back(result.second.pt);
 		}
 	}
-	visualize_external(m, {pts_safe, pts_mine});
+	visualize(m, {pts_safe, pts_mine}, external);
 }

@@ -37,7 +37,7 @@ namespace minedotcpp
 			bool mine_count_solve_non_border = true;
 
 			int give_up_from_size = 28;
-			int multithread_valid_combination_search_from_size = 22;
+			int multithread_valid_combination_search_from_size = 32;
 		};
 	}
 }

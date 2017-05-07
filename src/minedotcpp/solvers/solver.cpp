@@ -234,7 +234,7 @@ void solver::try_solve_border_by_partial_borders(solver_map& m, border& b) const
 		auto target_coordinate = b.cells[i].pt;
 		partial_border_data border_data;
 		get_partial_border(b, m, target_coordinate, border_data);
-		//visualize_external(border_data.partial_map, { border_data.partial_border });
+		//visualize(border_data.partial_map, { border_data.partial_border }, true);
 		partial_border_data previous_border_data;
 		auto superset = false;
 		for(auto& checked : checked_partial_borders)
@@ -360,6 +360,7 @@ void calculate_partial_map_and_trim_partial_border(border& partial_border, solve
 
 	partial_map.width = parent_map.width;
 	partial_map.height = parent_map.height;
+	partial_map.remaining_mine_count = -1;
 	partial_map.cells.resize(partial_map.width * partial_map.height);
 
 	for(auto i = 0; i < partial_map.width; i++)
@@ -443,7 +444,7 @@ void solver::thr_find_combos(const solver_map& map, border& border, unsigned int
 	auto border_length = border.cells.size();
 	auto all_remaining_cells_in_border = map.undecided_count == border_length;
 	// TODO: Macro because calling the thread function here directly causes it to slow down about 50% for some reason. Figure out why
-#define FIND_COMBOS_BODY \
+#define FIND_COMBOS_BODY(lck, unlck) \
 for(unsigned int combo = min; combo < max; combo++)\
 {\
 	if(map.remaining_mine_count > 0)\
@@ -470,12 +471,12 @@ for(unsigned int combo = min; combo < max; combo++)\
 			auto has_mine = (combo & (1 << j)) > 0;\
 			predictions[pt] = has_mine;\
 		}\
-		sync.lock();\
+		lck;\
 		border.valid_combinations.push_back(predictions);\
-		sync.unlock();\
+		unlck;\
 	}\
 }
-	FIND_COMBOS_BODY
+	FIND_COMBOS_BODY(sync.lock(), sync.unlock())
 }
 
 void solver::find_valid_border_cell_combinations(solver_map& map, border& border) const
@@ -517,9 +518,9 @@ void solver::find_valid_border_cell_combinations(solver_map& map, border& border
 	}
 
 	auto thread_count = std::thread::hardware_concurrency();
-	std::mutex sync;
 	if(border_length > settings.multithread_valid_combination_search_from_size && thread_count > 1)
 	{
+		std::mutex sync;
 		auto thread_load = total_combos / thread_count;
 		std::vector<std::thread> threads;
 		for(auto i = 0; i < thread_count; i++)
@@ -543,7 +544,7 @@ void solver::find_valid_border_cell_combinations(solver_map& map, border& border
 		unsigned int min = 0;
 		unsigned int max = total_combos;
 		//thr_find_combos(map, border, 0, total_combos, empty_cells, cell_indices, sync);
-		FIND_COMBOS_BODY
+		FIND_COMBOS_BODY(,)
 	}
 }
 
