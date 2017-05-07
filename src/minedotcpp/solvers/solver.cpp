@@ -106,7 +106,7 @@ void solver::solve_separation(solver_map& m, point_map<double>& probabilities, p
 
 	for(auto& border : original_borders)
 	{
-		solve_border(border, m, true, borders);
+		solve_border(m, border, true, borders);
 		for(auto& borderVerdict : border.verdicts)
 		{
 			verdicts[borderVerdict.first] = borderVerdict.second;
@@ -118,7 +118,7 @@ void solver::solve_separation(solver_map& m, point_map<double>& probabilities, p
 	}
 }
 
-void solver::solve_border(border& b, solver_map& m, bool allow_partial_border_solving, std::vector<border>& borders) const
+void solver::solve_border(solver_map& m, border& b, bool allow_partial_border_solving, std::vector<border>& borders) const
 {
 	if(settings.partial_solve)
 	{
@@ -130,8 +130,11 @@ void solver::solve_border(border& b, solver_map& m, bool allow_partial_border_so
 				borders.push_back(b);
 				return;
 			}
+
 			if(settings.resplit_on_partial_verdict && b.verdicts.size() > 0)
 			{
+				reseparate_border(m, b, borders, true);
+				return;
 				//var borders = TrySolveBorderByReseparating(b, m);
 				//if (borders != null)
 				//{
@@ -189,7 +192,8 @@ void solver::solve_border(border& b, solver_map& m, bool allow_partial_border_so
 
 	b.min_mine_count += current_mine_verdicts;
 	b.max_mine_count += current_mine_verdicts;
-
+	 
+	auto verdicts_before = b.verdicts.size();
 	calculate_border_probabilities(b);
 	get_verdicts_from_probabilities(b.probabilities, b.verdicts);
 	m.set_cells_by_verdicts(b.verdicts);
@@ -222,8 +226,14 @@ void solver::solve_border(border& b, solver_map& m, bool allow_partial_border_so
 	}
 
 	b.solved_fully = true;
-	// TODO: try resplitting borders anyway after solving?
-	borders.push_back(b);
+	if(settings.resplit_on_complete_verdict && b.verdicts.size() > verdicts_before)
+	{
+		reseparate_border(m, b, borders, false);
+	}
+	else
+	{
+		borders.push_back(b);
+	}
 }
 
 void solver::try_solve_border_by_partial_borders(solver_map& m, border& b) const
@@ -264,7 +274,7 @@ void solver::try_solve_border_by_partial_borders(solver_map& m, border& b) const
 		}
 		
 		std::vector<border> temp;
-		solve_border(border_data.partial_border, border_data.partial_map, false, temp);
+		solve_border(border_data.partial_map, border_data.partial_border, false, temp);
 		checked_partial_borders.push_back(border_data);
 		auto& verdicts = border_data.partial_border.verdicts;
 		if(verdicts.size() > 0)
@@ -442,6 +452,43 @@ void solver::get_partial_border(border& border, solver_map& map, point target_pt
 	border_data.partial_map.calculate_additional_data();
 }
 
+void solver::reseparate_border(solver_map& m, border& parent_border, std::vector<border>& borders, bool solve) const
+{
+	auto resplit_borders = std::vector<border>();
+	auto border_count = separate_borders(m, parent_border, resplit_borders);
+	/*if(border_count == 0)
+	{
+		return;
+	}*/
+	/*if(border_count == 1)
+	{
+		borders.push_back(resplit_borders[0]);
+		return;
+	}*/
+	for(auto& b : resplit_borders)
+	{
+		if(solve)
+		{
+			solve_border(m, b, false, borders);
+		}
+		else
+		{
+			borders.push_back(b);
+		}
+		for(auto& verdict : b.verdicts)
+		{
+			parent_border.verdicts[verdict.first] = verdict.second;
+		}
+		if(b.solved_fully)
+		{
+			for(auto& probability : b.probabilities)
+			{
+				parent_border.probabilities[probability.first] = probability.second;
+			}
+		}
+	}
+}
+
 void solver::thr_find_combos(const solver_map& map, border& border, unsigned int min, unsigned int max, const std::vector<cell>& empty_cells, const CELL_INDICES_T& cell_indices, std::mutex& sync) const
 {
 	auto border_length = border.cells.size();
@@ -526,7 +573,7 @@ void solver::find_valid_border_cell_combinations(solver_map& map, border& border
 		std::mutex sync;
 		auto thread_load = total_combos / thread_count;
 		std::vector<std::thread> threads;
-		for(auto i = 0; i < thread_count; i++)
+		for(unsigned i = 0; i < thread_count; i++)
 		{
 			unsigned int min = thread_load * i;
 			unsigned int max = min + thread_load;
@@ -563,7 +610,7 @@ bool solver::is_prediction_valid(const solver_map& map, const border& b, unsigne
 	for(auto& cell : empty_cells)
 	{
 		auto neighbours_with_mine = 0;
-		auto neighbours_without_mine = 0;
+		//auto neighbours_without_mine = 0;
 		auto& filled_neighbours = map.neighbour_cache[cell.pt.x * map.width + cell.pt.y].by_state[cell_state_filled];
 		for(auto& neighbour : filled_neighbours)
 		{
@@ -573,9 +620,9 @@ bool solver::is_prediction_valid(const solver_map& map, const border& b, unsigne
 			case cell_flag_has_mine:
 				++neighbours_with_mine;
 				break;
-			case cell_flag_doesnt_have_mine:
-				++neighbours_without_mine;
-				break;
+			//case cell_flag_doesnt_have_mine:
+			//	++neighbours_without_mine;
+			//	break;
 			default:
 				/*unsigned int i;
 				for(i = 0; i < b.cells.size(); i++)
@@ -592,10 +639,10 @@ bool solver::is_prediction_valid(const solver_map& map, const border& b, unsigne
 				{
 					++neighbours_with_mine;
 				}
-				else
-				{
-					++neighbours_without_mine;
-				}
+				//else
+				//{
+				//	++neighbours_without_mine;
+				//}
 				break;
 			}
 		}
@@ -688,25 +735,28 @@ void solver::breadth_search_border(solver_map& m, point_set& allowed_coordinates
 	}
 }
 
-void solver::separate_borders(solver_map& m, border& common_border, std::vector<border>& target_borders) const
+int solver::separate_borders(solver_map& m, border& common_border, std::vector<border>& target_borders) const
 {
 	point_set common_coords;
 	for(auto c : common_border.cells)
 	{
 		common_coords.insert(c.pt);
 	}
-	auto i = target_borders.size();
+	auto index = target_borders.size();
+	auto border_count = 0;
 	while(common_coords.size() > 0)
 	{
+		border_count++;
 		auto& initial_point = *common_coords.begin();
-		target_borders.resize(++i);
-		auto& brd = target_borders[i - 1];
+		target_borders.resize(++index);
+		auto& brd = target_borders[index - 1];
 		breadth_search_border(m, common_coords, initial_point, brd.cells);
 		for(auto& c : brd.cells)
 		{
 			common_coords.erase(c.pt);
 		}
 	}
+	return border_count;
 }
 
 bool solver::is_cell_border(solver_map& m, cell& c) const

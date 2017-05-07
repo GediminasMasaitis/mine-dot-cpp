@@ -68,7 +68,7 @@ int main(int argc, char* argv[])
 	getc(stdin);
 	return 0;*/
 	minedotcpp::mapio::text_map_parser parser;
-	minedotcpp::mapio::text_map_visualizer visualizer;
+	//minedotcpp::mapio::text_map_visualizer visualizer;
 	string path = "C:/Temp/test_map.txt";
 	map* test_map = nullptr;
 	if(argc > 1)
@@ -117,10 +117,9 @@ int main(int argc, char* argv[])
 	
 	cout << endl << "That took " << std::chrono::duration_cast<std::chrono::milliseconds>(diff).count() << " ms" << endl << endl;
 	print_results(results);
+	visualize(*test_map, *results, false);
 	//visualize_external(*test_map, *results);
 	delete results;
-	auto str = visualizer.visualize_to_string(*test_map);
-	cout << str << endl;
 	strm.close();
 	cout << "Press any key to continue" << endl;
 	getc(stdin);

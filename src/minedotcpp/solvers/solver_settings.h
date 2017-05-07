@@ -26,11 +26,11 @@ namespace minedotcpp
 			bool partial_all_stop_on_any_verdict = false;
 			bool partial_stop_always = false;
 			int partial_solve_from_size = 22;
-			int partial_optimal_size = 16;
+			int partial_optimal_size = 17;
 			bool partial_set_probability_guesses = true;
 
-			bool resplit_on_partial_verdict = true;
-			bool resplit_on_complete_verdict = true;
+			bool resplit_on_partial_verdict = false;
+			bool resplit_on_complete_verdict = false;
 
 			bool mine_count_ignore_completely = false;
 			bool mine_count_solve = true;
