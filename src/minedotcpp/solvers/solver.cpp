@@ -621,9 +621,9 @@ bool solver::is_prediction_valid(const solver_map& map, const border& b, unsigne
 			case cell_flag_has_mine:
 				++neighbours_with_mine;
 				break;
-			//case cell_flag_doesnt_have_mine:
+			case cell_flag_doesnt_have_mine:
 			//	++neighbours_without_mine;
-			//	break;
+				break;
 			default:
 				/*unsigned int i;
 				for(i = 0; i < b.cells.size(); i++)
