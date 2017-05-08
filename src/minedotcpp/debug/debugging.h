@@ -1,7 +1,22 @@
 #pragma once
 #include "../common/map.h"
 #include "../mapio/text_map_visualizer.h"
+#include <iostream>
 #include <sstream>
+
+static void dump_results(minedotcpp::common::point_map<minedotcpp::solvers::solver_result>& results)
+{
+	if (results.size() == 0)
+	{
+		std::cout << "No results" << std::endl;
+		return;
+	}
+	for (auto& result : results)
+	{
+		std::cout << "[" << result.first.x << ";" << result.first.y << "] " << result.second.probability * 100 << "%" << std::endl;
+	}
+	std::cout << std::endl;
+}
 
 static void dump_predictions(std::vector<minedotcpp::common::point_map<bool>>& predictions)
 {
@@ -28,7 +43,8 @@ static void visualize(minedotcpp::common::map& m, std::vector<std::vector<minedo
 
 	for(auto& region : regions)
 	{
-		minedotcpp::common::map mask_map(m.width, m.height, -1);
+		minedotcpp::common::map mask_map;
+		mask_map.init(m.width, m.height, -1);
 		for(auto& coord : region)
 		{
 			mask_map.cell_get(coord).state = minedotcpp::common::cell_state_filled;

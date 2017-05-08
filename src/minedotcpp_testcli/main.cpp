@@ -16,19 +16,7 @@ using namespace std;
 using namespace minedotcpp::common;
 using namespace minedotcpp::solvers;
 
-void print_results(point_map<solver_result>* results)
-{
-	if(results == nullptr)
-	{
-		cout << "No results" << endl;
-		return;
-	}
-	for(auto& result : *results)
-	{
-		cout << "[" << result.first.x << ";" << result.first.y << "] " << result.second.probability * 100 << "%" << endl;
-	}
-	cout << endl;
-}
+
 
 int main(int argc, char* argv[])
 {
@@ -36,12 +24,9 @@ int main(int argc, char* argv[])
 	COORD coord = {300,1000};
 	HANDLE handle = GetStdHandle(STD_OUTPUT_HANDLE);
 	SetConsoleScreenBufferSize(handle, coord);
-
 	HWND wh = GetConsoleWindow();
 	RECT rect = { NULL };
 	GetWindowRect(wh, &rect);
-	// Move window to required position
-	//MoveWindow(wh, rect.left, rect.top, 640, 900, TRUE);
 	MoveWindow(wh, rect.left, 50, 800, 950, TRUE);
 #endif
 
@@ -70,7 +55,7 @@ int main(int argc, char* argv[])
 	minedotcpp::mapio::text_map_parser parser;
 	//minedotcpp::mapio::text_map_visualizer visualizer;
 	string path = "C:/Temp/test_map.txt";
-	map* test_map = nullptr;
+	map test_map;
 	if(argc > 1)
 	{
 		string cmd(argv[1]);
@@ -90,7 +75,7 @@ int main(int argc, char* argv[])
 		{
 			if (argc > 2)
 			{
-				test_map = parser.parse(string(argv[2]));
+				parser.parse(string(argv[2]), test_map);
 			}
 			else
 			{
@@ -100,10 +85,11 @@ int main(int argc, char* argv[])
 		}
 	}
 
-	ifstream strm(path);
-	if(test_map == nullptr)
+	if(test_map.width == -1 && test_map.height == -1)
 	{
-		test_map = parser.parse(&strm);
+		ifstream strm(path);
+		parser.parse(strm, test_map);
+		strm.close();
 	}
 
 	solver_settings settings;
@@ -111,16 +97,16 @@ int main(int argc, char* argv[])
 	solver s(settings);
 	std::chrono::high_resolution_clock clock;
 	auto start_time = clock.now();
-	auto results = s.solve(*test_map);
+	auto results = point_map<solver_result>();
+	s.solve(test_map, results);
 	auto end_time = clock.now();
 	auto diff = end_time - start_time;
 	
 	cout << endl << "That took " << std::chrono::duration_cast<std::chrono::milliseconds>(diff).count() << " ms" << endl << endl;
-	print_results(results);
-	visualize(*test_map, *results, false);
+	dump_results(results);
+	visualize(test_map, results, false);
 	//visualize_external(*test_map, *results);
-	delete results;
-	strm.close();
+	
 	cout << "Press any key to continue" << endl;
 	getc(stdin);
 	return 0;

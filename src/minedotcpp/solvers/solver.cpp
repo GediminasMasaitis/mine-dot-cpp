@@ -14,7 +14,7 @@ solver::solver(solver_settings& settings)
 	this->settings = settings;
 }
 
-point_map<solver_result>* solver::solve(const map& base_map) const
+void solver::solve(const map& base_map, point_map<solver_result>& results) const
 {
 	solver_map m;
 	m.init_from(base_map);
@@ -32,7 +32,8 @@ point_map<solver_result>* solver::solve(const map& base_map) const
 		solve_trivial(m, all_verdicts);
 		if(should_stop_solving(all_verdicts, settings.trivial_stop_on_no_mine_verdict, settings.trivial_stop_on_any_verdict, settings.trivial_stop_always))
 		{
-			return get_final_results(all_probabilities, all_verdicts);
+			get_final_results(all_probabilities, all_verdicts, results);
+			return;
 		}
 	}
 
@@ -42,7 +43,7 @@ point_map<solver_result>* solver::solve(const map& base_map) const
 
 	solve_separation(m, all_probabilities, all_verdicts);
 
-	return get_final_results(all_probabilities, all_verdicts);
+	get_final_results(all_probabilities, all_verdicts, results);
 }
 
 void solver::solve_trivial(solver_map& m, point_map<bool>& verdicts) const
@@ -807,10 +808,8 @@ bool solver::should_stop_solving(point_map<bool>& verdicts, bool stop_on_no_mine
 	return false;
 }
 
-point_map<solver_result>* solver::get_final_results(point_map<double>& probabilities, point_map<bool>& verdicts) const
+void solver::get_final_results(point_map<double>& probabilities, point_map<bool>& verdicts, point_map<solver_result>& results) const
 {
-	auto results_ptr = new point_map<solver_result>();
-	auto& results = *results_ptr;
 	for(auto& probability : probabilities)
 	{
 		auto& result = results[probability.first];
@@ -825,5 +824,4 @@ point_map<solver_result>* solver::get_final_results(point_map<double>& probabili
 		result.probability = verdict.second ? 1 : 0;
 		result.verdict = verdict.second ? verdict_has_mine : verdict_doesnt_have_mine;
 	}
-	return results_ptr;
 }

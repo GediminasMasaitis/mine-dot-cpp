@@ -34,7 +34,7 @@ namespace minedotcpp
 			solver_settings settings;
 
 			explicit solver(solver_settings& settings);
-			common::point_map<solver_result>* solve(const common::map& map) const;
+			void solve(const common::map& base_map, common::point_map<solver_result>& results) const;
 
 		private:
 
@@ -56,7 +56,7 @@ namespace minedotcpp
 			bool is_cell_border(solver_map& m, common::cell& c) const;
 			void find_common_border(solver_map& m, border& common_border) const;
 			bool should_stop_solving(common::point_map<bool>& verdicts, bool stop_on_no_mine_verdict, bool stop_on_any_verdict, bool stop_always) const;
-			common::point_map<solver_result>* get_final_results(common::point_map<double>& probabilities, common::point_map<bool>& verdicts) const;
+			void get_final_results(common::point_map<double>& probabilities, common::point_map<bool>& verdicts, common::point_map<solver_result>& results) const;
 		};
 	}
 }

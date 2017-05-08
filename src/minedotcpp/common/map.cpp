@@ -6,10 +6,11 @@ using namespace minedotcpp::common;
 
 map::map()
 {
-	
+	width = -1;
+	height = -1;
 }
 
-map::map(int width, int height, int remaining_mine_count, cell_param state)
+void map::init(int width, int height, int remaining_mine_count, cell_param state)
 {
 	this->width = width;
 	this->height = height;

@@ -9,8 +9,8 @@ namespace minedotcpp
 		class MINE_API text_map_parser
 		{
 		public:
-			common::map* parse(std::string str) const;
-			common::map* parse(std::istream* is) const;
+			void parse(std::string str, common::map& target_map) const;
+			void parse(std::istream& is, common::map& target_map) const;
 		};
 	}
 }
