@@ -105,14 +105,14 @@ void solver::solve_separation(solver_map& m, point_map<double>& probabilities, p
 	find_common_border(m, common_border);
 	separate_borders(m, common_border, original_borders);
 
-	for(auto& border : original_borders)
+	for(auto& b : original_borders)
 	{
-		solve_border(m, border, true, borders);
-		for(auto& borderVerdict : border.verdicts)
+		solve_border(m, b, true, borders);
+		for(auto& borderVerdict : b.verdicts)
 		{
 			verdicts[borderVerdict.first] = borderVerdict.second;
 		}
-		for(auto& probability : border.probabilities)
+		for(auto& probability : b.probabilities)
 		{
 			probabilities[probability.first] = probability.second;
 		}
@@ -193,7 +193,7 @@ void solver::solve_border(solver_map& m, border& b, bool allow_partial_border_so
 
 	b.min_mine_count += current_mine_verdicts;
 	b.max_mine_count += current_mine_verdicts;
-	 
+
 	auto verdicts_before = b.verdicts.size();
 	calculate_border_probabilities(b);
 	get_verdicts_from_probabilities(b.probabilities, b.verdicts);
@@ -273,7 +273,7 @@ void solver::try_solve_border_by_partial_borders(solver_map& m, border& b) const
 		{
 			continue;
 		}
-		
+
 		std::vector<border> temp;
 		solve_border(border_data.partial_map, border_data.partial_border, false, temp);
 		checked_partial_borders.push_back(border_data);
@@ -459,12 +459,12 @@ void solver::reseparate_border(solver_map& m, border& parent_border, std::vector
 	auto border_count = separate_borders(m, parent_border, resplit_borders);
 	/*if(border_count == 0)
 	{
-		return;
+	return;
 	}*/
 	/*if(border_count == 1)
 	{
-		borders.push_back(resplit_borders[0]);
-		return;
+	borders.push_back(resplit_borders[0]);
+	return;
 	}*/
 	for(auto& b : resplit_borders)
 	{
@@ -495,7 +495,7 @@ void solver::thr_find_combos(const solver_map& map, border& border, unsigned int
 	auto border_length = border.cells.size();
 	auto all_remaining_cells_in_border = map.undecided_count == border_length;
 	// TODO: Macro because calling the thread function here directly causes it to slow down about 50% for some reason. Figure out why
-#define FIND_COMBOS_BODY(lck, unlck) \
+#define FIND_COMBOS_BODY(lck) \
 for(unsigned int combo = min; combo < max; combo++)\
 {\
 	if(map.remaining_mine_count > 0)\
@@ -524,16 +524,15 @@ for(unsigned int combo = min; combo < max; combo++)\
 		}\
 		lck;\
 		border.valid_combinations.push_back(predictions);\
-		unlck;\
 	}\
 }
-	FIND_COMBOS_BODY(sync.lock(), sync.unlock())
+	FIND_COMBOS_BODY(std::lock_guard<std::mutex> block(sync))		
 }
 
 void solver::find_valid_border_cell_combinations(solver_map& map, border& border) const
 {
 	auto border_length = border.cells.size();
-	
+
 	const int max_size = 31;
 	if(border_length > max_size)
 	{
@@ -582,7 +581,11 @@ void solver::find_valid_border_cell_combinations(solver_map& map, border& border
 			{
 				max = total_combos;
 			}
-			threads.emplace_back([&]() { thr_find_combos(map, border, min, max, empty_cells, cell_indices, sync); });
+			threads.emplace_back([this, &map, &border, min, max, &empty_cells, &cell_indices, &sync]()
+			{
+				thr_find_combos(map, border, min, max, empty_cells, cell_indices, sync);
+			});
+			//thr_find_combos(map, border, min, max, empty_cells, cell_indices, sync);
 		}
 
 		for(auto& thr : threads)
@@ -595,7 +598,7 @@ void solver::find_valid_border_cell_combinations(solver_map& map, border& border
 		unsigned int min = 0;
 		unsigned int max = total_combos;
 		//thr_find_combos(map, border, 0, total_combos, empty_cells, cell_indices, sync);
-		FIND_COMBOS_BODY(,)
+		FIND_COMBOS_BODY()
 	}
 }
 
@@ -622,7 +625,7 @@ bool solver::is_prediction_valid(const solver_map& map, const border& b, unsigne
 				++neighbours_with_mine;
 				break;
 			case cell_flag_doesnt_have_mine:
-			//	++neighbours_without_mine;
+				//	++neighbours_without_mine;
 				break;
 			default:
 				/*unsigned int i;
