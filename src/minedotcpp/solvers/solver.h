@@ -55,7 +55,7 @@ namespace minedotcpp
 			int separate_borders(solver_map& m, border& common_border, std::vector<border>& target_borders) const;
 			bool is_cell_border(solver_map& m, common::cell& c) const;
 			void find_common_border(solver_map& m, border& common_border) const;
-			void solve_mine_counts(solver_map& m, border& common_border, std::vector<border>& borders, common::point_map<double>& all_probabilities, common::point_map<bool> all_verdicts) const;
+			void solve_mine_counts(solver_map& m, border& common_border, std::vector<border>& borders, common::point_map<double>& all_probabilities, common::point_map<bool>& all_verdicts) const;
 			void trim_valid_combinations_by_mine_count(border& b, int minesRemaining, int undecidedCellsRemaining, int minesElsewhere, int nonMineCountElsewhere) const;
 			bool is_prediction_valid_by_mine_count(int minePredictionCount, int totalCombinationLength, int minesRemaining, int undecidedCellsRemaining, int minesElsewhere, int nonMineCountElsewhere) const;
 			void get_variable_mine_count_borders_probabilities(std::vector<border>& variable_borders, int minesRemaining, int undecided_cells_remaining, int non_border_cell_count, int minesElsewhere, int non_mine_count_elsewhere, common::point_map<double>& targetProbabilities, google::dense_hash_map<int, double>& nonBorderMineCountProbabilities) const;

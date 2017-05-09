@@ -117,6 +117,11 @@ void solver::solve_separation(solver_map& m, point_map<double>& probabilities, p
 			probabilities[probability.first] = probability.second;
 		}
 	}
+
+	if(settings.mine_count_solve)
+	{
+		solve_mine_counts(m, common_border, borders, probabilities, verdicts);
+	}
 }
 
 void solver::solve_border(solver_map& m, border& b, bool allow_partial_border_solving, std::vector<border>& borders) const
@@ -784,7 +789,7 @@ void solver::find_common_border(solver_map& m, border& common_border) const
 	}
 }
 
-void solver::solve_mine_counts(solver_map& m, border& common_border, std::vector<border>& borders, point_map<double>& all_probabilities, point_map<bool> all_verdicts) const
+void solver::solve_mine_counts(solver_map& m, border& common_border, std::vector<border>& borders, point_map<double>& all_probabilities, point_map<bool>& all_verdicts) const
 {
 	if (m.remaining_mine_count == -1)
 	{
