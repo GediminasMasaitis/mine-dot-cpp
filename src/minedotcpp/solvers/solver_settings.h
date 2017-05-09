@@ -9,7 +9,7 @@ namespace minedotcpp
 		struct MINE_API solver_settings
 		{
 		public:
-			bool trivial_solve = true;
+			bool trivial_solve = false;
 			bool trivial_stop_on_no_mine_verdict = false;
 			bool trivial_stop_on_any_verdict = false;
 			bool trivial_stop_always = false;
@@ -29,16 +29,16 @@ namespace minedotcpp
 			int partial_optimal_size = 17;
 			bool partial_set_probability_guesses = true;
 
-			bool resplit_on_partial_verdict = false;
+			bool resplit_on_partial_verdict = true;
 			bool resplit_on_complete_verdict = false;
 
 			bool mine_count_ignore_completely = false;
-			bool mine_count_solve = false;
+			bool mine_count_solve = true;
 			bool mine_count_solve_non_border = true;
 
 			int give_up_from_size = 28;
 			int multithread_valid_combination_search_from_size = 21; //2097152
-			int multithread_variable_mine_count_borders_probabilities = 1;
+			int multithread_variable_mine_count_borders_probabilities = 1000000000;
 		};
 	}
 }

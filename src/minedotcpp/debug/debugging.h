@@ -4,6 +4,15 @@
 #include <iostream>
 #include <sstream>
 
+static void dump_point_set(minedotcpp::common::point_set& ps)
+{
+	for(auto& p : ps)
+	{
+		printf("[%i, %i] ", p.x, p.y);
+	}
+	printf("\n");
+}
+
 static void dump_results(minedotcpp::common::point_map<minedotcpp::solvers::solver_result>& results)
 {
 	if (results.size() == 0)

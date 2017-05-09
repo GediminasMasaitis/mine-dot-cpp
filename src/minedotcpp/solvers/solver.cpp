@@ -585,7 +585,7 @@ bool solver::is_prediction_valid(const solver_map& map, const border& b, unsigne
 		{
 			auto flag = neighbour.state & cell_flags;
 			switch(flag)
-			{
+			{	
 			case cell_flag_has_mine:
 				++neighbours_with_mine;
 				break;
@@ -871,7 +871,8 @@ void solver::solve_mine_counts(solver_map& m, border& common_border, std::vector
 	}
 
 	auto non_border_mine_count_probabilities = google::dense_hash_map<int, double>();
-
+	non_border_mine_count_probabilities.set_empty_key(-1);
+	non_border_mine_count_probabilities.set_deleted_key(-2);
 	if (borders_with_variable_mine_count.size() > 0)
 	{
 		auto exact_non_mine_count = exect_border_size - exact_mine_count;
@@ -946,6 +947,10 @@ static void initialize_combination_ratios()
 
 inline static double combination_ratio(int from, int count)
 {
+	if(combination_ratios.size() == 0)
+	{
+		initialize_combination_ratios();
+	}
 	assert(count <= from);
 	return combination_ratios[from][count];
 }
@@ -1048,7 +1053,11 @@ void solver::get_variable_mine_count_borders_probabilities(std::vector<border>& 
 	}
 
 	auto ratios = google::dense_hash_map<int, double>();
+	ratios.set_empty_key(-1);
+	ratios.set_deleted_key(-2);
 	auto non_border_mine_counts = google::dense_hash_map<int, double>();
+	non_border_mine_counts.set_empty_key(-1);
+	non_border_mine_counts.set_deleted_key(-2);
 	double currentRatio = 1;
 	for (auto i = min_mines_in_non_border; i <= max_mines_in_non_border; i++)
 	{
@@ -1119,7 +1128,7 @@ void solver::get_non_border_probabilities_by_mine_count(solver_map& map, point_m
 		return;
 	}
 
-	auto probabilitySum = 0;
+	double probabilitySum = 0;
 	for (auto& p : common_border_probabilities)
 	{
 		probabilitySum += p.second;
