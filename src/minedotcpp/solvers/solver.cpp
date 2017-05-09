@@ -952,7 +952,63 @@ inline static double combination_ratio(int from, int count)
 	return combination_ratios[from][count];
 }
 
-void solver::get_variable_mine_count_borders_probabilities(std::vector<border>& variable_borders, int minesRemaining, int undecided_cells_remaining, int non_border_cell_count, int minesElsewhere, int non_mine_count_elsewhere, point_map<double>& targetProbabilities, google::dense_hash_map<int, double>& nonBorderMineCountProbabilities) const
+void solver::thr_mine_counts(std::vector<border>& variable_borders, int min, int max, int mines_remaining, int mines_elsewhere, int non_border_cell_count, int total_combination_length, int undecided_cells_remaining, int non_mine_count_elsewhere, google::dense_hash_map<int, double>& ratios, google::dense_hash_map<int, double>& non_border_mine_counts, point_map<double>& counts, std::mutex& common_lock, point_map<std::mutex*>& count_locks) const
+{
+	for (auto i = min; i < max; i++)
+	{
+		auto combinationArr = std::vector<point_map<bool>>();
+		auto minePredictionCount = 0;
+		for (auto j = 0; j < variable_borders.size(); j++)
+		{
+			lldiv_t res{ i, 0 };
+			res = div(res.quot, variable_borders[j].valid_combinations.size());
+			auto& combo = variable_borders[j].valid_combinations[res.rem];
+			for (auto& p : combo)
+			{
+				if (p.second)
+				{
+					++minePredictionCount;
+				}
+			}
+			combinationArr.push_back(combo);
+		}
+
+		auto mines_in_non_border = mines_remaining - mines_elsewhere - minePredictionCount;
+		if (mines_in_non_border < 0)
+		{
+			return;
+		}
+		if (mines_in_non_border > non_border_cell_count)
+		{
+			return;
+		}
+		auto& ratio = ratios[mines_in_non_border];
+		{
+			std::lock_guard<std::mutex> guard(common_lock);
+			non_border_mine_counts[mines_in_non_border] += ratio;
+		}
+		auto isValid = is_prediction_valid_by_mine_count(minePredictionCount, total_combination_length, mines_remaining, undecided_cells_remaining, mines_elsewhere, non_mine_count_elsewhere);
+		if (!isValid)
+		{
+			//throw new Exception("temp");
+			throw "temp";
+		}
+		for (auto& combo : combinationArr)
+		{
+			for (auto& verdict : combo)
+			{
+				if (verdict.second)
+				{
+					auto& mutex = count_locks[verdict.first];
+					std::lock_guard<std::mutex> guard(*mutex);
+					++counts[verdict.first];
+				}
+			}
+		}
+	}
+}
+
+void solver::get_variable_mine_count_borders_probabilities(std::vector<border>& variable_borders, int mines_remaining, int undecided_cells_remaining, int non_border_cell_count, int mines_elsewhere, int non_mine_count_elsewhere, point_map<double>& target_probabilities, google::dense_hash_map<int, double>& non_border_mine_count_probabilities) const
 {
 	auto max_mines = 0;
 	auto min_mines = 0;
@@ -982,12 +1038,12 @@ void solver::get_variable_mine_count_borders_probabilities(std::vector<border>& 
 		total_combos *= b.valid_combinations.size();
 	}
 	
-	auto min_mines_in_non_border = minesRemaining - minesElsewhere - max_mines + alreadyFoundMines;
+	auto min_mines_in_non_border = mines_remaining - mines_elsewhere - max_mines + alreadyFoundMines;
 	if (min_mines_in_non_border < 0)
 	{
 		min_mines_in_non_border = 0;
 	}
-	auto max_mines_in_non_border = minesRemaining - minesElsewhere - min_mines + alreadyFoundMines;
+	auto max_mines_in_non_border = mines_remaining - mines_elsewhere - min_mines + alreadyFoundMines;
 	if (max_mines_in_non_border > non_border_cell_count)
 	{
 		max_mines_in_non_border = non_border_cell_count;
@@ -1007,7 +1063,6 @@ void solver::get_variable_mine_count_borders_probabilities(std::vector<border>& 
 	auto thread_count = std::thread::hardware_concurrency();
 	if (total_combos > settings.multithread_variable_mine_count_borders_probabilities && thread_count > 1)
 	{
-		std::mutex sync;
 		auto thread_load = total_combos / thread_count;
 		std::vector<std::thread> threads;
 		for (unsigned i = 0; i < thread_count; i++)
@@ -1018,60 +1073,9 @@ void solver::get_variable_mine_count_borders_probabilities(std::vector<border>& 
 			{
 				max = total_combos;
 			}
-			threads.emplace_back([this, min, max, minesRemaining, minesElsewhere, non_border_cell_count, total_combination_length, undecided_cells_remaining, non_mine_count_elsewhere, &variable_borders, &ratios, &non_border_mine_counts, &counts, &common_lock, &count_locks]()
+ 			threads.emplace_back([this, min, max, mines_remaining, mines_elsewhere, non_border_cell_count, total_combination_length, undecided_cells_remaining, non_mine_count_elsewhere, &variable_borders, &ratios, &non_border_mine_counts, &counts, &common_lock, &count_locks]()
 			{
-				for (auto i = min; i < max; i++)
-				{
-					auto combinationArr = std::vector<point_map<bool>>();
-					auto minePredictionCount = 0;
-					for (auto j = 0; j < variable_borders.size(); j++)
-					{
-						lldiv_t res{ i, 0 };
-						res = div(res.quot, variable_borders[j].valid_combinations.size());
-						auto& combo = variable_borders[j].valid_combinations[res.rem];
-						for(auto& p : combo)
-						{
-							if(p.second)
-							{
-								++minePredictionCount;
-							}
-						}
-						combinationArr.push_back(combo);
-					}
-					
-					auto mines_in_non_border = minesRemaining - minesElsewhere - minePredictionCount;
-					if (mines_in_non_border < 0)
-					{
-						return;
-					}
-					if (mines_in_non_border > non_border_cell_count)
-					{
-						return;
-					}
-					auto& ratio = ratios[mines_in_non_border];
-					{
-						std::lock_guard<std::mutex> guard(common_lock);
-						non_border_mine_counts[mines_in_non_border] += ratio;
-					}
-					auto isValid = is_prediction_valid_by_mine_count(minePredictionCount, total_combination_length, minesRemaining, undecided_cells_remaining, minesElsewhere, non_mine_count_elsewhere);
-					if (!isValid)
-					{
-						//throw new Exception("temp");
-						throw "temp";
-					}
-					for(auto& combo : combinationArr)
-					{
-						for(auto& verdict : combo)
-						{
-							if(verdict.second)
-							{
-								auto& mutex = count_locks[verdict.first];
-								std::lock_guard<std::mutex> guard(*mutex);
-								++counts[verdict.first];
-							}
-						}
-					}
-				}
+				thr_mine_counts(variable_borders, min, max, mines_remaining, mines_elsewhere, non_border_cell_count, total_combination_length, undecided_cells_remaining, non_mine_count_elsewhere, ratios, non_border_mine_counts, counts, common_lock, count_locks);
 			});
 		}
 
@@ -1079,6 +1083,10 @@ void solver::get_variable_mine_count_borders_probabilities(std::vector<border>& 
 		{
 			thr.join();
 		}
+	}
+	else
+	{
+		thr_mine_counts(variable_borders, 0, total_combos, mines_remaining, mines_elsewhere, non_border_cell_count, total_combination_length, undecided_cells_remaining, non_mine_count_elsewhere, ratios, non_border_mine_counts, counts, common_lock, count_locks);
 	}
 
 	for(auto& mutex_ptr : count_locks)
@@ -1097,12 +1105,12 @@ void solver::get_variable_mine_count_borders_probabilities(std::vector<border>& 
 		{
 			continue;
 		}
-		nonBorderMineCountProbabilities[mc.first] = mc.second / total_valid_combinations;
+		non_border_mine_count_probabilities[mc.first] = mc.second / total_valid_combinations;
 	}
 	for(auto& count : counts)
 	{
 		auto probability = count.second / total_valid_combinations;
-		targetProbabilities[count.first] = probability;
+		target_probabilities[count.first] = probability;
 	}
 }
 
