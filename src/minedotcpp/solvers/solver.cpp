@@ -92,7 +92,6 @@ void solver::solve_trivial(solver_map& m, point_map<bool>& verdicts) const
 			return;
 		}
 		m.set_cells_by_verdicts(currentRoundVerdicts);
-
 	}
 }
 
@@ -136,11 +135,6 @@ void solver::solve_border(solver_map& m, border& b, bool allow_partial_border_so
 			{
 				reseparate_border(m, b, borders, true);
 				return;
-				//var borders = TrySolveBorderByReseparating(b, m);
-				//if (borders != null)
-				//{
-				//	return borders;
-				//}
 			}
 		}
 	}
@@ -158,41 +152,7 @@ void solver::solve_border(solver_map& m, border& b, bool allow_partial_border_so
 		// TODO: Must be invalid map... Handle somehow
 	}
 
-
-	auto current_mine_verdicts = 0;
-	for(auto& verdict : b.verdicts)
-	{
-		if(verdict.second)
-		{
-			current_mine_verdicts++;
-		}
-	}
-
-	b.min_mine_count = 32;
-	b.max_mine_count = 0;
-
-	for(auto& valid_combination : b.valid_combinations)
-	{
-		auto mine_count = 0;
-		for(auto& verdict : valid_combination)
-		{
-			if(verdict.second)
-			{
-				mine_count++;
-			}
-		}
-		if(mine_count < b.min_mine_count)
-		{
-			b.min_mine_count = mine_count;
-		}
-		if(mine_count > b.max_mine_count)
-		{
-			b.max_mine_count = mine_count;
-		}
-	}
-
-	b.min_mine_count += current_mine_verdicts;
-	b.max_mine_count += current_mine_verdicts;
+	calculate_min_max_mine_counts(b);
 
 	auto verdicts_before = b.verdicts.size();
 	calculate_border_probabilities(b);
@@ -660,6 +620,44 @@ bool solver::is_prediction_valid(const solver_map& map, const border& b, unsigne
 
 	}
 	return true;
+}
+
+void solver::calculate_min_max_mine_counts(border& b) const
+{
+	auto current_mine_verdicts = 0;
+	for(auto& verdict : b.verdicts)
+	{
+		if(verdict.second)
+		{
+			current_mine_verdicts++;
+		}
+	}
+
+	b.min_mine_count = 32;
+	b.max_mine_count = 0;
+
+	for(auto& valid_combination : b.valid_combinations)
+	{
+		auto mine_count = 0;
+		for(auto& verdict : valid_combination)
+		{
+			if(verdict.second)
+			{
+				mine_count++;
+			}
+		}
+		if(mine_count < b.min_mine_count)
+		{
+			b.min_mine_count = mine_count;
+		}
+		if(mine_count > b.max_mine_count)
+		{
+			b.max_mine_count = mine_count;
+		}
+	}
+
+	b.min_mine_count += current_mine_verdicts;
+	b.max_mine_count += current_mine_verdicts;
 }
 
 void solver::calculate_border_probabilities(border& b) const

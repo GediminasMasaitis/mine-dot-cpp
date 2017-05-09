@@ -47,6 +47,7 @@ namespace minedotcpp
 			void reseparate_border(solver_map& m, border& parent_border, std::vector<border>& borders, bool solve) const;
 			void find_valid_border_cell_combinations(solver_map& map, border& border) const;
 			bool is_prediction_valid(const solver_map& map, const border& b, unsigned prediction, const std::vector<common::cell>& empty_cells, const CELL_INDICES_T& cell_indices) const;
+			void calculate_min_max_mine_counts(border& b) const;
 			int SWAR(int i) const;
 			void thr_find_combos(const solver_map& map, border& border, unsigned min, unsigned max, const std::vector<common::cell>& empty_cells, const CELL_INDICES_T& cell_indices, std::mutex& sync) const;
 			void calculate_border_probabilities(border& b) const;
