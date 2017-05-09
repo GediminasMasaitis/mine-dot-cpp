@@ -18,7 +18,7 @@ typedef minedotcpp::common::point_map<int> CELL_INDICES_T;
 #define CELL_INDICES_RESIZE(ci, b, m) ci.resize(b.cells.size())
 #else
 typedef std::vector<int> CELL_INDICES_T;
-#define CELL_INDICES_ELEMENT(ci, pt, m) ci[pt.x * m.width + pt.y]
+#define CELL_INDICES_ELEMENT(ci, pt, m) ci[pt.x * m.height + pt.y]
 #define CELL_INDICES_RESIZE(ci, b, m) ci.resize(m.width * m.height)
 #endif
 

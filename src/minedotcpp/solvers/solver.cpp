@@ -580,7 +580,7 @@ bool solver::is_prediction_valid(const solver_map& map, const border& b, unsigne
 	{
 		auto neighbours_with_mine = 0;
 		//auto neighbours_without_mine = 0;
-		auto& filled_neighbours = map.neighbour_cache[cell.pt.x * map.width + cell.pt.y].by_state[cell_state_filled];
+		auto& filled_neighbours = map.neighbour_cache[cell.pt.x * map.height + cell.pt.y].by_state[cell_state_filled];
 		for(auto& neighbour : filled_neighbours)
 		{
 			auto flag = neighbour.state & cell_flags;
