@@ -39,9 +39,10 @@ void solver::solve(const map& base_map, point_map<solver_result>& results) const
 
 	// TODO: Gaussian solving
 
-
-
-	solve_separation(m, all_probabilities, all_verdicts);
+	if (settings.separation_solve)
+	{
+		solve_separation(m, all_probabilities, all_verdicts);
+	}
 
 	get_final_results(all_probabilities, all_verdicts, results);
 }
@@ -50,7 +51,7 @@ void solver::solve_trivial(solver_map& m, point_map<bool>& verdicts) const
 {
 	while(true)
 	{
-		point_map<bool> currentRoundVerdicts;
+		point_map<bool> current_round_verdicts;
 
 		for(auto& cell : m.cells)
 		{
@@ -58,20 +59,20 @@ void solver::solve_trivial(solver_map& m, point_map<bool>& verdicts) const
 			{
 				continue;
 			}
-			auto& neighbourEntry = m.neighbour_cache_get(cell.pt);
-			auto& filledNeighbours = neighbourEntry.by_state[cell_state_filled];
-			auto& flaggedNeighbours = neighbourEntry.by_flag[cell_flag_has_mine];
-			auto& antiflaggedNeighbours = neighbourEntry.by_flag[cell_flag_doesnt_have_mine];
-			if(filledNeighbours.size() == flaggedNeighbours.size() + antiflaggedNeighbours.size())
+			auto& neighbour_entry = m.neighbour_cache_get(cell.pt);
+			auto& filled_neighbours = neighbour_entry.by_state[cell_state_filled];
+			auto& flagged_neighbours = neighbour_entry.by_flag[cell_flag_has_mine];
+			auto& antiflagged_neighbours = neighbour_entry.by_flag[cell_flag_doesnt_have_mine];
+			if(filled_neighbours.size() == flagged_neighbours.size() + antiflagged_neighbours.size())
 			{
 				continue;
 			}
 
-			auto flagging = filledNeighbours.size() == cell.hint;
-			auto clicking = flaggedNeighbours.size() == cell.hint;
+			auto flagging = filled_neighbours.size() == cell.hint;
+			auto clicking = flagged_neighbours.size() == cell.hint;
 			if(clicking || flagging)
 			{
-				for(auto& neighbour : filledNeighbours)
+				for(auto& neighbour : filled_neighbours)
 				{
 					if(neighbour.state == (cell_state_filled | cell_flag_has_mine))
 					{
@@ -81,17 +82,17 @@ void solver::solve_trivial(solver_map& m, point_map<bool>& verdicts) const
 					{
 						continue;
 					}
-					currentRoundVerdicts[neighbour.pt] = flagging;
+					current_round_verdicts[neighbour.pt] = flagging;
 					verdicts[neighbour.pt] = flagging;
 				}
 			}
 		}
 
-		if(currentRoundVerdicts.size() == 0)
+		if(current_round_verdicts.size() == 0)
 		{
 			return;
 		}
-		m.set_cells_by_verdicts(currentRoundVerdicts);
+		m.set_cells_by_verdicts(current_round_verdicts);
 	}
 }
 
@@ -421,16 +422,7 @@ void solver::get_partial_border(border& border, solver_map& map, point target_pt
 void solver::reseparate_border(solver_map& m, border& parent_border, std::vector<border>& borders, bool solve) const
 {
 	auto resplit_borders = std::vector<border>();
-	auto border_count = separate_borders(m, parent_border, resplit_borders);
-	/*if(border_count == 0)
-	{
-	return;
-	}*/
-	/*if(border_count == 1)
-	{
-	borders.push_back(resplit_borders[0]);
-	return;
-	}*/
+	separate_borders(m, parent_border, resplit_borders);
 	for(auto& b : resplit_borders)
 	{
 		if(solve)
@@ -579,7 +571,6 @@ bool solver::is_prediction_valid(const solver_map& map, const border& b, unsigne
 	for(auto& cell : empty_cells)
 	{
 		auto neighbours_with_mine = 0;
-		//auto neighbours_without_mine = 0;
 		auto& filled_neighbours = map.neighbour_cache[cell.pt.x * map.height + cell.pt.y].by_state[cell_state_filled];
 		for(auto& neighbour : filled_neighbours)
 		{
@@ -590,39 +581,22 @@ bool solver::is_prediction_valid(const solver_map& map, const border& b, unsigne
 				++neighbours_with_mine;
 				break;
 			case cell_flag_doesnt_have_mine:
-				//	++neighbours_without_mine;
 				break;
 			default:
-				/*unsigned int i;
-				for(i = 0; i < b.cells.size(); i++)
-				{
-				if(neighbour.pt == b.cells[i].pt)
-				{
-				break;
-				}
-				}*/
 				unsigned int i = CELL_INDICES_ELEMENT(cell_indices, neighbour.pt, map);
-				//unsigned int i = b.cell_indices[neighbour.pt];
 				auto verdict = (prediction & (1 << i)) > 0;
 				if(verdict)
 				{
 					++neighbours_with_mine;
 				}
-				//else
-				//{
-				//	++neighbours_without_mine;
-				//}
 				break;
 			}
 		}
 
 		if(neighbours_with_mine != cell.hint)
+		{
 			return false;
-
-		// TODO: What does this do?
-		//if (filled_neighbours.size() - neighbours_without_mine < cell.hint)
-		//	return false;
-
+		}
 	}
 	return true;
 }
@@ -837,7 +811,7 @@ void solver::solve_mine_counts(solver_map& m, border& common_border, std::vector
 	auto borders_with_exact_mine_count = std::vector<border>();
 	auto borders_with_variable_mine_count = std::vector<border>();
 	auto exact_mine_count = 0;
-	auto exect_border_size = 0;
+	auto exact_border_size = 0;
 	for(auto i = 0; i < fully_solved_borders.size(); i++)
 	{
 		auto& b = fully_solved_borders[i];
@@ -862,7 +836,7 @@ void solver::solve_mine_counts(solver_map& m, border& common_border, std::vector
 				common_border_coords.erase(c.pt);
 			}
 			exact_mine_count += b.max_mine_count;
-			exect_border_size += b.cells.size();
+			exact_border_size += b.cells.size();
 		}
 		else
 		{
@@ -875,7 +849,7 @@ void solver::solve_mine_counts(solver_map& m, border& common_border, std::vector
 	non_border_mine_count_probabilities.set_deleted_key(-2);
 	if (borders_with_variable_mine_count.size() > 0)
 	{
-		auto exact_non_mine_count = exect_border_size - exact_mine_count;
+		auto exact_non_mine_count = exact_border_size - exact_mine_count;
 		get_variable_mine_count_borders_probabilities(borders_with_variable_mine_count, m.remaining_mine_count, m.undecided_count, non_border_cells.size(), exact_mine_count, exact_non_mine_count, all_probabilities, non_border_mine_count_probabilities);
 	}
 
@@ -912,13 +886,13 @@ void solver::trim_valid_combinations_by_mine_count(border& b, int minesRemaining
 	}
 }
 
-bool solver::is_prediction_valid_by_mine_count(int minePredictionCount, int totalCombinationLength, int minesRemaining, int undecidedCellsRemaining, int minesElsewhere, int nonMineCountElsewhere) const
+inline bool solver::is_prediction_valid_by_mine_count(int mine_prediction_count, int total_combination_length, int mines_remaining, int undecided_cells_remaining, int mines_elsewhere, int non_mine_count_elsewhere) const
 {
-	if (minePredictionCount + minesElsewhere > minesRemaining)
+	if (mine_prediction_count + mines_elsewhere > mines_remaining)
 	{
 		return false;
 	}
-	if (minesRemaining - minePredictionCount > undecidedCellsRemaining - totalCombinationLength - nonMineCountElsewhere)
+	if (mines_remaining - mine_prediction_count > undecided_cells_remaining - total_combination_length - non_mine_count_elsewhere)
 	{
 		return false;
 	}
@@ -960,7 +934,7 @@ void solver::thr_mine_counts(std::vector<border>& variable_borders, int min, int
 	for (auto i = min; i < max; i++)
 	{
 		auto combinationArr = std::vector<point_map<bool>>();
-		auto minePredictionCount = 0;
+		auto mine_prediction_count = 0;
 		for (auto j = 0; j < variable_borders.size(); j++)
 		{
 			lldiv_t res{ i, 0 };
@@ -970,13 +944,13 @@ void solver::thr_mine_counts(std::vector<border>& variable_borders, int min, int
 			{
 				if (p.second)
 				{
-					++minePredictionCount;
+					++mine_prediction_count;
 				}
 			}
 			combinationArr.push_back(combo);
 		}
 
-		auto mines_in_non_border = mines_remaining - mines_elsewhere - minePredictionCount;
+		auto mines_in_non_border = mines_remaining - mines_elsewhere - mine_prediction_count;
 		if (mines_in_non_border < 0)
 		{
 			return;
@@ -990,8 +964,8 @@ void solver::thr_mine_counts(std::vector<border>& variable_borders, int min, int
 			std::lock_guard<std::mutex> guard(common_lock);
 			non_border_mine_counts[mines_in_non_border] += ratio;
 		}
-		auto isValid = is_prediction_valid_by_mine_count(minePredictionCount, total_combination_length, mines_remaining, undecided_cells_remaining, mines_elsewhere, non_mine_count_elsewhere);
-		if (!isValid)
+		auto is_valid = is_prediction_valid_by_mine_count(mine_prediction_count, total_combination_length, mines_remaining, undecided_cells_remaining, mines_elsewhere, non_mine_count_elsewhere);
+		if (!is_valid)
 		{
 			//throw new Exception("temp");
 			throw "temp";
@@ -1136,10 +1110,10 @@ void solver::get_non_border_probabilities_by_mine_count(solver_map& map, point_m
 	{
 		return;
 	}
-	auto nonBorderProbability = (map.remaining_mine_count - probabilitySum) / non_border_undecided_cells.size();
+	auto non_border_probability = (map.remaining_mine_count - probabilitySum) / non_border_undecided_cells.size();
 	for(auto& non_border_filled_cell : non_border_undecided_cells)
 	{
-		probabilities[non_border_filled_cell.pt] = nonBorderProbability;
+		probabilities[non_border_filled_cell.pt] = non_border_probability;
 	}
 }
 
