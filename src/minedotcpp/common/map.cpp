@@ -4,13 +4,15 @@
 
 using namespace minedotcpp::common;
 
-map::map()
+template<typename TCell>
+map_base<TCell>::map_base()
 {
 	width = -1;
 	height = -1;
 }
 
-void map::init(int width, int height, int remaining_mine_count, cell_param state)
+template<typename TCell>
+void map_base<TCell>::init(int width, int height, int remaining_mine_count, cell_param state)
 {
 	this->width = width;
 	this->height = height;
@@ -30,7 +32,8 @@ void map::init(int width, int height, int remaining_mine_count, cell_param state
 	}
 }
 
-cell* map::cell_try_get(int x, int y)
+template<typename TCell>
+TCell* map_base<TCell>::cell_try_get(int x, int y)
 {
 	if(x >= 0 && y >= 0 && x < width && y < height)
 	{
@@ -43,12 +46,14 @@ cell* map::cell_try_get(int x, int y)
 	return nullptr;
 }
 
-inline bool map::cell_exists(int x, int y)
+template<typename TCell>
+inline bool map_base<TCell>::cell_exists(int x, int y)
 {
 	return x >= 0 && y >= 0 && x < width && y < height && cell_get(x, y).state != cell_state_wall;
 }
 
-inline bool map::cell_exists(point pt)
+template<typename TCell>
+inline bool map_base<TCell>::cell_exists(point pt)
 {
 	return cell_exists(pt.x, pt.y);
 }

@@ -19,7 +19,7 @@ namespace minedotcpp
 			bool gaussian_stop_on_any_verdict = false;
 			bool gaussian_stop_always = false;
 
-			bool separation_solve = false;
+			bool separation_solve = true;
 
 			bool partial_solve = true;
 			bool partial_single_stop_on_no_mine_verdict = false;
@@ -28,7 +28,7 @@ namespace minedotcpp
 			bool partial_all_stop_on_any_verdict = false;
 			bool partial_stop_always = false;
 			int partial_solve_from_size = 22;
-			int partial_optimal_size = 17;
+			int partial_optimal_size = 18;
 			bool partial_set_probability_guesses = true;
 
 			bool resplit_on_partial_verdict = true;
