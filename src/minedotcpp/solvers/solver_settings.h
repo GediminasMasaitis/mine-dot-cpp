@@ -9,7 +9,7 @@ namespace minedotcpp
 		struct MINE_API solver_settings
 		{
 		public:
-			bool trivial_solve = false;
+			bool trivial_solve = true;
 			bool trivial_stop_on_no_mine_verdict = false;
 			bool trivial_stop_on_any_verdict = false;
 			bool trivial_stop_always = false;
@@ -38,7 +38,7 @@ namespace minedotcpp
 
 			int give_up_from_size = 28;
 			int multithread_valid_combination_search_from_size = 21; //2097152
-			int multithread_variable_mine_count_borders_probabilities = 1000000000;
+			int multithread_variable_mine_count_borders_probabilities = 65536;
 		};
 	}
 }

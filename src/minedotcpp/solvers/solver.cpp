@@ -1004,7 +1004,7 @@ void solver::thr_mine_counts(std::vector<border>& variable_borders, int min, int
 				{
 					auto& mutex = count_locks[verdict.first];
 					std::lock_guard<std::mutex> guard(*mutex);
-					++counts[verdict.first];
+					counts[verdict.first] += ratio;
 				}
 			}
 		}
@@ -1066,7 +1066,6 @@ void solver::get_variable_mine_count_borders_probabilities(std::vector<border>& 
 		non_border_mine_counts[i] = 0;
 	}
 
-
 	auto thread_count = std::thread::hardware_concurrency();
 	if (total_combos > settings.multithread_variable_mine_count_borders_probabilities && thread_count > 1)
 	{
@@ -1101,7 +1100,7 @@ void solver::get_variable_mine_count_borders_probabilities(std::vector<border>& 
 		delete mutex_ptr.second;
 	}
 
-	auto total_valid_combinations = 0;
+	double total_valid_combinations = 0;
 	for(auto& mc : non_border_mine_counts)
 	{
 		total_valid_combinations += mc.second;
@@ -1123,7 +1122,7 @@ void solver::get_variable_mine_count_borders_probabilities(std::vector<border>& 
 
 void solver::get_non_border_probabilities_by_mine_count(solver_map& map, point_map<double>& common_border_probabilities, std::vector<cell>& non_border_undecided_cells, point_map<double>& probabilities) const
 {
-	if (map.remaining_mine_count == 0)
+	if (map.remaining_mine_count == -1)
 	{
 		return;
 	}

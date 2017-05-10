@@ -4,11 +4,38 @@
 #include <iostream>
 #include <sstream>
 
+static void dump_verdicts(minedotcpp::common::point_map<bool>& ps)
+{
+	for (auto& p : ps)
+	{
+		printf("[%i, %i]: %s  ", p.first.x, p.first.y, p.second ? "true" : "false");
+	}
+	printf("\n");
+}
+
+static void dump_probabilities(minedotcpp::common::point_map<double>& ps)
+{
+	for (auto& p : ps)
+	{
+		printf("[%i, %i]: %f  ", p.first.x, p.first.y, p.second);
+	}
+	printf("\n");
+}
+
+static void dump_ratios(google::dense_hash_map<int, double>& ps)
+{
+	for (auto& p : ps)
+	{
+		printf("[%i]: %f  ", p.first, p.second);
+	}
+	printf("\n");
+}
+
 static void dump_point_set(minedotcpp::common::point_set& ps)
 {
 	for(auto& p : ps)
 	{
-		printf("[%i, %i] ", p.x, p.y);
+		printf("[%i, %i]  ", p.x, p.y);
 	}
 	printf("\n");
 }
