@@ -27,7 +27,7 @@ void text_map_parser::parse(istream& is, map& m) const
 	}
 	for (string line; getline(is, line);)
 	{
-		auto line_len = line.length();
+		auto line_len = static_cast<unsigned int>(line.length());
 		if(line_len == 0)
 		{
 			continue;
@@ -43,7 +43,7 @@ void text_map_parser::parse(istream& is, map& m) const
 		}
 		lines.push_back(line);
 	}
-	int width = lines.size();
+	auto width = static_cast<int>(lines.size());
 	m.init(width, height, remaining_mine_count);
 	int i = 0;
 	for(auto& line : lines)

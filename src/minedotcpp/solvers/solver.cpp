@@ -555,7 +555,7 @@ void solver::find_valid_border_cell_combinations(solver_map& map, border& border
 		unsigned int min = 0;
 		unsigned int max = total_combos;
 		//thr_find_combos(map, border, 0, total_combos, empty_cells, cell_indices, sync);
-		FIND_COMBOS_BODY()
+		FIND_COMBOS_BODY(;);
 	}
 }
 
@@ -825,7 +825,7 @@ void solver::solve_mine_counts(solver_map& m, border& common_border, std::vector
 			}
 			auto& other = fully_solved_borders[j];
 			guaranteed_mines += other.min_mine_count;
-			guaranteed_empty += other.cells.size() - other.max_mine_count;
+			guaranteed_empty += static_cast<int>(other.cells.size()) - other.max_mine_count;
 		}
 		trim_valid_combinations_by_mine_count(b, m.remaining_mine_count, m.undecided_count, guaranteed_mines, guaranteed_empty);
 		if(b.min_mine_count == b.max_mine_count)
@@ -836,7 +836,7 @@ void solver::solve_mine_counts(solver_map& m, border& common_border, std::vector
 				common_border_coords.erase(c.pt);
 			}
 			exact_mine_count += b.max_mine_count;
-			exact_border_size += b.cells.size();
+			exact_border_size += static_cast<int>(b.cells.size());
 		}
 		else
 		{
@@ -850,7 +850,8 @@ void solver::solve_mine_counts(solver_map& m, border& common_border, std::vector
 	if (borders_with_variable_mine_count.size() > 0)
 	{
 		auto exact_non_mine_count = exact_border_size - exact_mine_count;
-		get_variable_mine_count_borders_probabilities(borders_with_variable_mine_count, m.remaining_mine_count, m.undecided_count, non_border_cells.size(), exact_mine_count, exact_non_mine_count, all_probabilities, non_border_mine_count_probabilities);
+		auto non_border_cell_count = static_cast<int>(non_border_cells.size());
+		get_variable_mine_count_borders_probabilities(borders_with_variable_mine_count, m.remaining_mine_count, m.undecided_count, non_border_cell_count, exact_mine_count, exact_non_mine_count, all_probabilities, non_border_mine_count_probabilities);
 	}
 
 	// If requested, we calculate the probabilities of mines in non-border cells, and copy them over.
@@ -877,7 +878,8 @@ void solver::trim_valid_combinations_by_mine_count(border& b, int minesRemaining
 				++mine_prediction_count;
 			}
 		}
-		auto isValid = is_prediction_valid_by_mine_count(mine_prediction_count, combination.size(), minesRemaining, undecidedCellsRemaining, minesElsewhere, nonMineCountElsewhere);
+		auto combination_size = static_cast<int>(combination.size());
+		auto isValid = is_prediction_valid_by_mine_count(mine_prediction_count, combination_size, minesRemaining, undecidedCellsRemaining, minesElsewhere, nonMineCountElsewhere);
 		if (!isValid)
 		{
 			b.valid_combinations.erase(b.valid_combinations.begin() + i);
@@ -1011,8 +1013,8 @@ void solver::get_variable_mine_count_borders_probabilities(std::vector<border>& 
 		}
 		max_mines += b.max_mine_count;
 		min_mines += b.min_mine_count;
-		total_combination_length += b.cells.size();
-		total_combos *= b.valid_combinations.size();
+		total_combination_length += static_cast<int>(b.cells.size());
+		total_combos *= static_cast<int>(b.valid_combinations.size());
 	}
 	
 	auto min_mines_in_non_border = mines_remaining - mines_elsewhere - max_mines + alreadyFoundMines;
