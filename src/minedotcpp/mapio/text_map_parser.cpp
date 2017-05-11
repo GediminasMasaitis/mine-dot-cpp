@@ -44,7 +44,7 @@ void text_map_parser::parse(istream& is, map& m) const
 		lines.push_back(line);
 	}
 	auto width = static_cast<int>(lines.size());
-	m.init(width, height, remaining_mine_count);
+	m.init(width, height, remaining_mine_count, cell_state_empty);
 	int i = 0;
 	for(auto& line : lines)
 	{

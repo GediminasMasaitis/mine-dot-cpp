@@ -3,7 +3,7 @@
 #include "game_map.h"
 #include "game_map_generator.h"
 
-inline void minedotcpp::game::game_map_generator::generate_with_mine_density(minedotcpp::game::game_map& m, minedotcpp::common::point starting_position, bool guarantee_opening, double mine_density) const
+inline void minedotcpp::game::game_map_generator::generate_with_mine_density(minedotcpp::game::game_map& m, minedotcpp::common::point starting_position, bool guarantee_opening, double mine_density)
 {
 	if (mine_density < 0 || mine_density > 1)
 	{
@@ -14,7 +14,7 @@ inline void minedotcpp::game::game_map_generator::generate_with_mine_density(min
 	generate_with_mine_count(m, starting_position, guarantee_opening, count);
 }
 
-void minedotcpp::game::game_map_generator::generate_with_mine_count(game_map& m, common::point starting_position, bool guarantee_opening, int mine_count) const
+void minedotcpp::game::game_map_generator::generate_with_mine_count(game_map& m, common::point starting_position, bool guarantee_opening, int mine_count)
 {
 	auto area = m.width * m.height;
 	auto coordinates = std::vector<common::point>();
@@ -27,7 +27,7 @@ void minedotcpp::game::game_map_generator::generate_with_mine_count(game_map& m,
 		}
 	}
 
-
+	m.remaining_mine_count = mine_count;
 	//var map = new GameMap(width, height, mine_count, true, CellState.Filled);
 
 	if(starting_position.x > -1 && starting_position.y > -1)

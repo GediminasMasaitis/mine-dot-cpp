@@ -80,7 +80,7 @@ static void visualize(minedotcpp::common::map& m, std::vector<std::vector<minedo
 	for(auto& region : regions)
 	{
 		minedotcpp::common::map mask_map;
-		mask_map.init(m.width, m.height, -1);
+		mask_map.init(m.width, m.height, -1, minedotcpp::common::cell_state_empty);
 		for(auto& coord : region)
 		{
 			mask_map.cell_get(coord).state = minedotcpp::common::cell_state_filled;

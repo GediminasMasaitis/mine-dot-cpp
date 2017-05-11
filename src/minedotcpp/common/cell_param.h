@@ -31,5 +31,10 @@ namespace minedotcpp
 		{
 			return static_cast<cell_param>(static_cast<int>(a) & static_cast<int>(b));
 		}
+
+		inline cell_param operator ~ (cell_param a)
+		{
+			return static_cast<cell_param>(~static_cast<int>(a));
+		}
 	}
 }
