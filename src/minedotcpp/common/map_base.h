@@ -9,6 +9,19 @@ namespace minedotcpp
 {
 	namespace common
 	{
+		static const point neighbour_offsets[8] = {
+			{ -1,-1 },
+			{ -1, 0 },
+			{ -1, 1 },
+			{ 0,-1 },
+			{ 0, 1 },
+			{ 1,-1 },
+			{ 1, 0 },
+			{ 1, 1 }
+		};
+
+		static const int neighbour_offset_count = 8;
+
 		template <typename TCell>
 		class map_base
 		{
@@ -41,6 +54,25 @@ namespace minedotcpp
 			TCell* cell_try_get(point pt) { return cell_try_get(pt.x, pt.y); }
 			bool cell_exists(int x, int y) { return x >= 0 && y >= 0 && x < width && y < height && cell_get(x, y).state != cell_state_wall; }
 			bool cell_exists(point pt) { return cell_exists(pt.x, pt.y); }
+
+
+
+			void calculate_neighbours_of(point pt, std::vector<cell>& cells, bool include_self = false)
+			{
+				for (auto i = 0; i < neighbour_offset_count; i++)
+				{
+					const auto cell_ptr = cell_try_get(pt + neighbour_offsets[i]);
+					if (cell_ptr != nullptr)
+					{
+						auto& c = *cell_ptr;
+						cells.push_back(c);
+					}
+				}
+				if (include_self)
+				{
+					cells.push_back(cell_get(pt));
+				}
+			}
 		};
 	}
 }

@@ -151,32 +151,3 @@ void solver_map::build_additional_neighbour_lists(neighbour_cache_entry& entry)
 	}
 }
 
-static const point neighbour_offsets[8] = {
-	{ -1,-1 },
-	{ -1, 0 },
-	{ -1, 1 },
-	{ 0,-1 },
-	{ 0, 1 },
-	{ 1,-1 },
-	{ 1, 0 },
-	{ 1, 1 }
-};
-
-static const int neighbour_offset_count = 8;
-
-void solver_map::calculate_neighbours_of(point pt, std::vector<cell> &cells, bool include_self = false)
-{
-	for (auto i = 0; i < neighbour_offset_count; i++)
-	{
-		auto cell_ptr = cell_try_get(pt + neighbour_offsets[i]);
-		if (cell_ptr != nullptr)
-		{
-			auto& c = *cell_ptr;
-			cells.push_back(c);
-		}
-	}
-	if (include_self)
-	{
-		cells.push_back(cell_get(pt));
-	}
-}

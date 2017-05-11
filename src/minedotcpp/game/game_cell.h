@@ -1,7 +1,7 @@
 #pragma once
 #include "../common/cell.h"
 
--namespace minedotcpp
+namespace minedotcpp
 {
 	namespace game
 	{
