@@ -1,7 +1,5 @@
 #pragma once
 
-#include <unordered_map>
-
 #include "../common/map.h"
 #include "../common/neighbour_cache_entry.h"
 

@@ -1,6 +1,8 @@
 #pragma once
 #include "../common/map.h"
 #include "../mapio/text_map_visualizer.h"
+#include "../solvers/solver_result.h"
+#include "../solvers/border.h"
 #include <iostream>
 #include <sstream>
 

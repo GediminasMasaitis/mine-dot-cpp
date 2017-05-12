@@ -1,7 +1,5 @@
 #pragma once
-
 #include <vector>
-
 #include "point.h"
 #include "cell.h"
 
