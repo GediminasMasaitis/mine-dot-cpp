@@ -23,6 +23,8 @@ namespace minedotcpp
 			}
 
 			void solve(const common::map& base_map, common::point_map<solver_result>& results) const;
+		private:
+			void get_final_results(solver_map& m, common::point_map<double>& probabilities, common::point_map<bool>& verdicts, common::point_map<solver_result>& results) const;
 		};
 	}
 }

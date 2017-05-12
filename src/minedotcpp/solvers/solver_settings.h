@@ -41,6 +41,9 @@ namespace minedotcpp
 			int give_up_from_size = 28;
 			int multithread_valid_combination_search_from_size = 21; //2097152
 			int multithread_variable_mine_count_borders_probabilities = 65536;
+
+			bool guess_if_no_no_mine_verdict = true;
+			bool guess_if_no_verdict = false;
 		};
 	}
 }

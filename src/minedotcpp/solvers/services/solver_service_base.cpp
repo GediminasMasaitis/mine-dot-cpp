@@ -54,20 +54,3 @@ bool solver_service_base::should_stop_solving(point_map<bool>& verdicts, bool st
 	return false;
 }
 
-void solver_service_base::get_final_results(point_map<double>& probabilities, point_map<bool>& verdicts, point_map<solver_result>& results) const
-{
-	for (auto& probability : probabilities)
-	{
-		auto& result = results[probability.first];
-		result.pt = probability.first;
-		result.probability = probability.second;
-		result.verdict = verdict_none;
-	}
-	for (auto& verdict : verdicts)
-	{
-		auto& result = results[verdict.first];
-		result.pt = verdict.first;
-		result.probability = verdict.second ? 1 : 0;
-		result.verdict = verdict.second ? verdict_has_mine : verdict_doesnt_have_mine;
-	}
-}

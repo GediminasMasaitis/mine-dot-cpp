@@ -16,6 +16,7 @@ namespace minedotcpp
 			//struct point& operator+=(const int& k) { x += k; y += k; return *this; }
 		};
 
+		inline bool operator!=(const point& lhs, const point& rhs) { return lhs.x != rhs.x || lhs.y != rhs.y; }
 		inline bool operator==(const point& lhs, const point& rhs) { return lhs.x == rhs.x && lhs.y == rhs.y; }
 		inline point operator+(point lhs, const point& rhs) { return { lhs.x + rhs.x, lhs.y + rhs.y }; }
 		inline point operator+(point lhs, const int k) { return { lhs.x + k, lhs.y + k }; }
