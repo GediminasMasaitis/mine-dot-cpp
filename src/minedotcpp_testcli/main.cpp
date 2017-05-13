@@ -76,13 +76,13 @@ void solve_from_file(int argc, char* argv[])
 
 void benchmark()
 {
-	auto mt = std::mt19937(1);
+	auto mt = std::mt19937(0);
 	auto benchmarker = minedotcpp::benchmarking::benchmarker(mt);
 	auto settings = solver_settings();
 	auto solvr = solver(settings);
 	auto group = minedotcpp::benchmarking::benchmark_density_group();
-	auto count = 10;
-	benchmarker.benchmark_multiple(solvr, 16, 16, 0.1, count, group);
+	auto count = 500;
+	benchmarker.benchmark_multiple(solvr, 16,16, 56, count, group);
 	cout << "Density: " << group.density << endl;
 	auto sum = 0;
 	auto success_count = 0;
@@ -109,7 +109,7 @@ int main(int argc, char* argv[])
 	auto wh = GetConsoleWindow();
 	RECT rect = { NULL };
 	GetWindowRect(wh, &rect);
-	MoveWindow(wh, rect.left, 50, 800, 950, TRUE);
+	MoveWindow(wh, rect.left, 50, 1300, 950, TRUE);
 #endif
 
 	//solve_from_file(argc, argv);

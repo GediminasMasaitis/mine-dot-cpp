@@ -38,7 +38,7 @@ bool solver_service_guessing::guess_verdict(solver_map& m, point_map<double>& pr
 			least_risky_probability = probability.second;
 		}
 	}
-	verdicts[least_risky_pt] = true;
+	verdicts[least_risky_pt] = false;
 	guessed_point = least_risky_pt;
 	return true;
 }

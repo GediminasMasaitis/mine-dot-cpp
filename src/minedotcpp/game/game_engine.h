@@ -20,7 +20,7 @@ namespace minedotcpp
 				game_started = false;
 			}
 
-			void start_new(int width, int height, common::point starting_position, bool guarantee_opening, double mine_density)
+			void start_with_mine_density(int width, int height, common::point starting_position, bool guarantee_opening, double mine_density)
 			{
 				gm = game_map();
 				gm.init(width, height, -1, common::cell_state_filled);
@@ -31,7 +31,7 @@ namespace minedotcpp
 				}
 			}
 
-			void start_new(int width, int height, common::point starting_position, bool guarantee_opening, int mine_count)
+			void start_with_mine_count(int width, int height, common::point starting_position, bool guarantee_opening, int mine_count)
 			{
 				gm = game_map();
 				gm.init(width, height, -1, common::cell_state_filled);

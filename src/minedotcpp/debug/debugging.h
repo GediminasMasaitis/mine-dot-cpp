@@ -127,6 +127,10 @@ static void visualize(minedotcpp::common::map& m, std::vector<std::vector<minedo
 			}
 			ss << std::endl;
 		}
+		if(m.remaining_mine_count != -1)
+		{
+			ss << "m" << m.remaining_mine_count << std::endl;
+		}
 		ss << std::endl << std::endl;
 	}
 	

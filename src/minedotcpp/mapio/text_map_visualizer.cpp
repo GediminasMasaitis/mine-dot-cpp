@@ -65,4 +65,8 @@ void text_map_visualizer::visualize(minedotcpp::common::map& m, ostream& os) con
 		}
 		os << endl;
 	}
+	if(m.remaining_mine_count != -1)
+	{
+		os << "m" << m.remaining_mine_count << endl;
+	}
 }

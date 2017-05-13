@@ -150,7 +150,7 @@ static vector<vector<double>> combination_ratios = vector<vector<double>>();
 
 static void initialize_combination_ratios()
 {
-	const auto max_size = 1000;
+	const auto max_size = 1600;
 	combination_ratios.resize(max_size);
 	for (auto n = 0; n < max_size; n++)
 	{
