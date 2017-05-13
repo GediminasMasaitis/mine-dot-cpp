@@ -1,6 +1,7 @@
 #pragma once
 #include "game_map_generator.h"
 #include "../common/point.h"
+#include "game_result.h"
 
 namespace minedotcpp
 {
@@ -9,21 +10,21 @@ namespace minedotcpp
 		class game_engine
 		{
 		public:
-			game_map_generator generator;
+			game_map_generator* generator;
 			game_map gm;
 			bool game_started;
 
-			explicit game_engine(game_map_generator& generator)
+			explicit game_engine(game_map_generator& generator) : generator(&generator)
 			{
-				this->generator = generator;
+				//this->generator = generator;
 				game_started = false;
 			}
 
-			void start_new(int width, int height, common::point starting_position, bool guarantee_opening, double mineDensity)
+			void start_new(int width, int height, common::point starting_position, bool guarantee_opening, double mine_density)
 			{
 				gm = game_map();
 				gm.init(width, height, -1, common::cell_state_filled);
-				generator.generate_with_mine_density(gm, starting_position, guarantee_opening, mineDensity);
+				generator->generate_with_mine_density(gm, starting_position, guarantee_opening, mine_density);
 				if (starting_position.x > -1 && starting_position.y > -1)
 				{
 					open_cell(starting_position);
@@ -34,7 +35,7 @@ namespace minedotcpp
 			{
 				gm = game_map();
 				gm.init(width, height, -1, common::cell_state_filled);
-				generator.generate_with_mine_count(gm, starting_position, guarantee_opening, mine_count);
+				generator->generate_with_mine_count(gm, starting_position, guarantee_opening, mine_count);
 				if (starting_position.x > -1 && starting_position.y > -1)
 				{
 					open_cell(starting_position);
@@ -79,16 +80,18 @@ namespace minedotcpp
 				}
 			}
 
-			bool open_cell(common::point pt)
+			game_result open_cell(common::point pt)
 			{
 				auto& initialCell = gm[pt];
 				if (initialCell.has_mine)
 				{
-					return false;
+					return game_lost;
 				}
 
+				auto visited = common::point_set();
 				auto to_open = common::point_set();
 				to_open.insert(pt);
+				visited.insert(pt);
 				while (to_open.size() > 0)
 				{
 					auto& coord = *to_open.begin();
@@ -97,18 +100,37 @@ namespace minedotcpp
 					to_open.erase(coord);
 					if (c.hint == 0)
 					{
-						auto neighbours = std::vector<common::cell>();
+						auto neighbours = std::vector<game_cell>();
 						gm.calculate_neighbours_of(c.pt, neighbours);
 						for(auto& neighbour : neighbours)
 						{
 							if(neighbour.state == common::cell_state_filled)
 							{
-								to_open.insert(neighbour.pt);
+								if(visited.find(neighbour.pt) == visited.end())
+								{
+									to_open.insert(neighbour.pt);
+									visited.insert(neighbour.pt);
+								}
 							}
 						}
 					}
 				}
-				return true;
+				for (auto& p : visited)
+				{
+					gm.cell_get(p).state = common::cell_state_empty;
+				}
+				/*if(gm.remaining_mine_count > 0)
+				{
+					return move_correct;
+				}*/
+				for(auto& c : gm.cells)
+				{
+					if(c.state == common::cell_state_filled && !c.has_mine)
+					{
+						return move_correct;
+					}
+				}
+				return game_won;
 			}
 
 		};

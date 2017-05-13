@@ -73,7 +73,7 @@ namespace minedotcpp
 				}
 			}
 
-			void calculate_neighbours_of(point pt, std::vector<cell>& cells, bool include_self = false)
+			void calculate_neighbours_of(point pt, std::vector<TCell>& cells, bool include_self = false)
 			{
 				for (auto i = 0; i < neighbour_offset_count; i++)
 				{

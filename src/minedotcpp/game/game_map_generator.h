@@ -17,17 +17,11 @@ namespace minedotcpp
 		class game_map_generator
 		{
 		public:
-			int seed;
-			std::default_random_engine random_engine;;
+			std::mt19937* random_engine;
 
-			explicit game_map_generator(int seed = -1)
+			game_map_generator()
 			{
-				random_engine = std::default_random_engine();
-				this->seed = seed;
-				if (seed != -1)
-				{
-					random_engine.seed(seed);
-				}
+				
 			}
 
 			void generate_with_mine_density(game_map& m, common::point starting_position, bool guarantee_opening, double mine_density);
