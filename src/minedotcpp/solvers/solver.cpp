@@ -4,6 +4,7 @@
 #include "services/solver_service_trivial.h"
 #include "services/solver_service_separation.h"
 #include "services/solver_service_guessing.h"
+#include "services/solver_service_gaussian.h"
 
 using namespace minedotcpp;
 using namespace solvers;
@@ -20,30 +21,39 @@ void solver::solve(const map& base_map, point_map<solver_result>& results) const
 		m.remaining_mine_count = -1;
 	}
 
-	point_map<double> all_probabilities;
-	point_map<bool> all_verdicts;
+	point_map<double> probabilities;
+	point_map<bool> verdicts;
 
 
 	if(settings.trivial_solve)
 	{
 		auto trivial_service = solver_service_trivial(settings);
-		trivial_service.solve_trivial(m, all_verdicts);
-		if(should_stop_solving(all_verdicts, settings.trivial_stop_on_no_mine_verdict, settings.trivial_stop_on_any_verdict, settings.trivial_stop_always))
+		trivial_service.solve_trivial(m, verdicts);
+		if(should_stop_solving(verdicts, settings.trivial_stop_on_no_mine_verdict, settings.trivial_stop_on_any_verdict, settings.trivial_stop_always))
 		{
-			get_final_results(m, all_probabilities, all_verdicts, results);
+			get_final_results(m, probabilities, verdicts, results);
 			return;
 		}
 	}
 
-	// TODO: Gaussian solving
+	if(settings.gaussian_solve)
+	{
+		auto gaussian_service = solver_service_gaussian(settings);
+		gaussian_service.solve_gaussian(m, verdicts);
+		if(should_stop_solving(verdicts, settings.gaussian_stop_on_no_mine_verdict, settings.gaussian_stop_on_any_verdict, settings.gaussian_stop_always))
+		{
+			get_final_results(m, probabilities, verdicts, results);
+			return;
+		}
+	}
 
 	if (settings.separation_solve)
 	{
 		auto separation_service = solver_service_separation(settings);
-		separation_service.solve_separation(m, all_probabilities, all_verdicts);
+		separation_service.solve_separation(m, probabilities, verdicts);
 	}
 
-	get_final_results(m, all_probabilities, all_verdicts, results);
+	get_final_results(m, probabilities, verdicts, results);
 }
 
 void solver::get_final_results(solver_map& m, point_map<double>& probabilities, point_map<bool>& verdicts, point_map<solver_result>& results) const

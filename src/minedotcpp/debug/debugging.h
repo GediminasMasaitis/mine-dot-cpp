@@ -6,6 +6,23 @@
 #include <iostream>
 #include <sstream>
 
+static void dump_gaussian_matrix(std::vector<std::vector<int>> matrix)
+{
+	for(auto& row : matrix)
+	{
+		for(auto j = 0; j < row.size(); j++)
+		{
+			auto& num = row[j];
+			if(j == row.size() - 1)
+			{
+				printf(" | ");
+			}
+			printf("%2i", num);
+		}
+		puts("");
+	}
+}
+
 static void dump_verdicts(minedotcpp::common::point_map<bool>& ps)
 {
 	for (auto& p : ps)
