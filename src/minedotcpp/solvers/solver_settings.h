@@ -28,7 +28,7 @@ namespace minedotcpp
 			bool partial_all_stop_on_any_verdict = false;
 			bool partial_stop_always = true;
 			int partial_solve_from_size = 20;
-			int partial_optimal_size = 10;
+			int partial_optimal_size = 14;
 			bool partial_set_probability_guesses = true;
 
 			bool resplit_on_partial_verdict = true;

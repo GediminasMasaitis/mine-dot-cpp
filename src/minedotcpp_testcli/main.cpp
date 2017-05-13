@@ -74,10 +74,19 @@ void solve_from_file(int argc, char* argv[])
 	visualize(test_map, results, false);
 }
 
+auto total_iterations = 0;
+
+void on_iteration_impl(int benchmark_index, map& m, point_map<solver_result>& results, int iteration, int duration)
+{
+	printf("Map: %5i, Total iterations: %7i, Iteration: %3i;  Time taken: %4i us\n", benchmark_index, total_iterations++, iteration, duration);
+	//visualize(m, results, false);
+}
+
 void benchmark()
 {
 	auto mt = std::mt19937(0);
 	auto benchmarker = minedotcpp::benchmarking::benchmarker(mt);
+	benchmarker.on_iteration = on_iteration_impl;
 	auto settings = solver_settings();
 	auto solvr = solver(settings);
 	auto group = minedotcpp::benchmarking::benchmark_density_group();
@@ -88,7 +97,7 @@ void benchmark()
 	auto success_count = 0;
 	for (auto& entry : group.entries)
 	{
-		cout << entry.total_duration << "; ";
+		//cout << entry.total_duration << "; ";
 		sum += entry.total_duration;
 		if(entry.solved)
 		{
@@ -96,7 +105,7 @@ void benchmark()
 		}
 	}
 	auto success_rate = (static_cast<double>(success_count) / count) * 100;
-	cout << endl << "Total: " << sum << " ms" << endl;
+	cout << endl << "Total: " << sum << " us" << endl;
 	cout << "Success rate: " << success_rate << "%" << endl;
 }
 

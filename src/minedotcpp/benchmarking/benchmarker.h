@@ -1,91 +1,29 @@
 #pragma once
 #include "../solvers/solver.h"
-#include <random>
 #include "../game/game_map_generator.h"
-#include "benchmark_entry.h"
-#include <chrono>
-#include "../game/game_engine.h"
 #include "benchmark_density_group.h"
 
 namespace minedotcpp
 {
 	namespace benchmarking
 	{
-		class benchmarker
+		class MINE_API benchmarker
 		{
 		public:
 
-			//std::mt19937 random_engine;
 			game::game_map_generator generator;
 
-			benchmarker(std::mt19937& mt)
+			void (*on_iteration)(int benchmark_index, common::map& m, common::point_map<solvers::solver_result>& results, int iteration, int duration) = nullptr;
+
+			explicit benchmarker(std::mt19937& mt)
 			{
 				generator.random_engine = &mt;
 			}
 
-			void benchmark_multiple(solvers::solver& s, int width, int height, int mine_count, int tests_to_run, benchmark_density_group& group)
-			{
-				group.density = static_cast<double>(width * height) / mine_count;
-				for(auto i = 0; i < tests_to_run; i++)
-				{
-					auto entry = benchmark_entry();
-					benchmark(s, width, height, mine_count, entry);
-					group.entries.push_back(entry);
-				}
-			}
-
-			void benchmark(solvers::solver& s, int width, int height, int mine_count, benchmark_entry& entry)
-			{
-				common::point starting_pt = { width >> 1, height >> 1 };
-				auto engine = game::game_engine(generator);
-				engine.start_with_mine_count(width, height, starting_pt, true, mine_count);
-				auto clock = std::chrono::high_resolution_clock();
-				auto iteration = 0;
-				while(true)
-				{
-					auto m = common::map();
-					engine.gm.to_regular_map(m);
-					printf("Iteration: %i\n", iteration++);
-					auto results = common::point_map<solvers::solver_result>();
-					auto start_time = clock.now();
-					s.solve(m, results);
-					auto end_time = clock.now();
-					auto diff = end_time - start_time;
-					auto ms = static_cast<int>(std::chrono::duration_cast<std::chrono::milliseconds>(diff).count());
-					printf("Time taken: %i ms\n", ms);
-					visualize(m, results, false);
-					entry.solving_durations.push_back(ms);
-					entry.total_duration += ms;
-
-					for(auto& res : results)
-					{
-						switch(res.second.verdict)
-						{
-						case solvers::verdict_has_mine:
-							engine.set_flag(res.first, common::cell_flag_has_mine);
-							break;
-						case solvers::verdict_doesnt_have_mine:
-						{
-							auto game_res = engine.open_cell(res.first);
-							switch(game_res)
-							{
-							case game::game_won:
-								entry.solved = true;
-								return;
-							case game::game_lost:
-								entry.solved = false;
-								return;
-							default:
-								break;
-							}
-						}
-							break;
-						default:
-							break;
-						}
-					}
-				}
-			}
+			void benchmark_multiple(solvers::solver& s, int width, int height, int mine_count, int tests_to_run, benchmark_density_group& group);
+			void benchmark(int benchmark_index, solvers::solver& s, int width, int height, int mine_count, benchmark_entry& entry);
 		};
+
+
 	}
 }
