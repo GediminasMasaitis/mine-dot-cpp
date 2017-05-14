@@ -165,3 +165,24 @@ bool solver_service_separation_combination_finding::is_prediction_valid(const so
 	}
 	return true;
 }
+
+void cl_find_valid_border_cell_combinations(solver_map& map, border& border)
+{
+	auto border_length = border.cells.size();
+	unsigned int total_combos = 1 << border_length;
+
+	auto map_for_cl = std::vector<char>();
+	for(auto i = 0; i < map.cells.size(); i++)
+	{
+		auto& c = map.cells[i];
+		auto& entry = map.neighbour_cache_get(c.pt);
+		auto& filled_neighbours = entry.by_state[cell_state_filled];
+		for(auto j = 0; j < 8; j++)
+		{
+			if(j < filled_neighbours.size())
+			{
+				
+			}
+		}
+	}
+}

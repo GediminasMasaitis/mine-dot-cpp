@@ -11,7 +11,15 @@ endif()
 set_property(TARGET minedotcpp PROPERTY CXX_STANDARD 11)
 add_definitions(-DMINE_EXPORTS)
 
-include_directories(${CMAKE_SOURCE_DIR}/external/sparsehash)
+if(USE_SPARSEHASH)
+	include_directories(${CMAKE_SOURCE_DIR}/external/sparsehash)
+endif()
+
+if(USE_OPENCL)
+	find_package(OpenCL REQUIRED)
+	include_directories(${OpenCL_INCLUDE_DIR})
+	target_link_libraries(minedotcpp ${OpenCL_LIBRARY})
+endif()
 
 install(TARGETS minedotcpp
     LIBRARY DESTINATION lib
