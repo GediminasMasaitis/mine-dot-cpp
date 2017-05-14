@@ -69,7 +69,7 @@ void solver_service_gaussian::get_matrix_from_map(solver_map& m, vector<point>& 
 	{
 		auto& hint_cell = hint_cells[i];
 		auto& entry = m.neighbour_cache_get(hint_cell.pt);
-		auto remaining_hint = hint_cell.hint - entry.by_flag[cell_flag_has_mine].size();
+		auto remaining_hint = static_cast<int>(hint_cell.hint - entry.by_flag[cell_flag_has_mine].size());
 
 		auto row = vector<int>(points.size() + 1);
 		auto& undecided_neighbours = m.neighbour_cache_get(hint_cell.pt).by_param[cell_state_filled | cell_flag_none];
