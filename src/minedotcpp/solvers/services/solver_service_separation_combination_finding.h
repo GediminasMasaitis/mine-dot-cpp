@@ -31,11 +31,16 @@ namespace minedotcpp
 				}
 
 				void find_valid_border_cell_combinations(solver_map& map, border& border) const;
+				void cl_find_valid_border_cell_combinations(solver_map& map, border& border) const;
 
 			private:
-				bool is_prediction_valid(const solver_map& map, const border& b, unsigned prediction, const std::vector<common::cell>& empty_cells, const CELL_INDICES_T& cell_indices) const;
+				bool is_prediction_valid(const solver_map& map, unsigned prediction, const std::vector<common::cell>& empty_cells, const CELL_INDICES_T& cell_indices) const;
 				int SWAR(int i) const;
 				void thr_find_combos(const solver_map& map, border& border, unsigned min, unsigned max, const std::vector<common::cell>& empty_cells, const CELL_INDICES_T& cell_indices, std::mutex& sync) const;
+
+
+				
+				bool cl_is_prediction_valid_fake(const std::vector<unsigned char>& map, unsigned prediction, const std::vector<int>& empty_pts, const std::vector<int>& cell_indices) const;
 			};
 		}
 	}

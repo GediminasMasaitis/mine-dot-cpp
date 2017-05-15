@@ -9,19 +9,19 @@ namespace minedotcpp
 		struct MINE_API solver_settings
 		{
 		public:
-			bool trivial_solve = true;
+			bool trivial_solve = false;
 			bool trivial_stop_on_no_mine_verdict = true;
 			bool trivial_stop_on_any_verdict = false;
 			bool trivial_stop_always = false;
 
-			bool gaussian_solve = true;
+			bool gaussian_solve = false;
 			bool gaussian_stop_on_no_mine_verdict = true;
 			bool gaussian_stop_on_any_verdict = false;
 			bool gaussian_stop_always = false;
 
 			bool separation_solve = true;
 
-			bool partial_solve = true;
+			bool partial_solve = false;
 			bool partial_single_stop_on_no_mine_verdict = false;
 			bool partial_single_stop_on_any_verdict = false;
 			bool partial_all_stop_on_no_mine_verdict = true;
@@ -38,11 +38,11 @@ namespace minedotcpp
 			bool mine_count_solve = true;
 			bool mine_count_solve_non_border = true;
 
-			int give_up_from_size = 24;
-			int multithread_valid_combination_search_from_size = 21; //2097152
+			int give_up_from_size = 31;
+			int multithread_valid_combination_search_from_size = 50; //2097152
 			int multithread_variable_mine_count_borders_probabilities = 65536;
 
-			bool guess_if_no_no_mine_verdict = true;
+			bool guess_if_no_no_mine_verdict = false;
 			bool guess_if_no_verdict = false;
 		};
 	}

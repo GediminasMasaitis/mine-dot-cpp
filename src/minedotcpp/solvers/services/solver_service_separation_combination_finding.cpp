@@ -33,7 +33,7 @@ for(unsigned int combo = min; combo < max; combo++)\
 		}\
 	}\
 \
-	auto prediction_valid = is_prediction_valid(map, border, combo, empty_cells, cell_indices);\
+	auto prediction_valid = is_prediction_valid(map, combo, empty_cells, cell_indices);\
 	if(prediction_valid)\
 	{\
 		point_map<bool> predictions;\
@@ -131,7 +131,7 @@ int solver_service_separation_combination_finding::SWAR(int i) const
 	return (((i + (i >> 4)) & 0x0F0F0F0F) * 0x01010101) >> 24;
 }
 
-bool solver_service_separation_combination_finding::is_prediction_valid(const solver_map& map, const border& b, unsigned int prediction, const vector<cell>& empty_cells, const CELL_INDICES_T& cell_indices) const
+bool solver_service_separation_combination_finding::is_prediction_valid(const solver_map& map, unsigned int prediction, const vector<cell>& empty_cells, const CELL_INDICES_T& cell_indices) const
 {
 	for(auto& cell : empty_cells)
 	{
@@ -166,23 +166,119 @@ bool solver_service_separation_combination_finding::is_prediction_valid(const so
 	return true;
 }
 
-void cl_find_valid_border_cell_combinations(solver_map& map, border& border)
+void solver_service_separation_combination_finding::cl_find_valid_border_cell_combinations(solver_map& map, border& border) const
 {
 	auto border_length = border.cells.size();
 	unsigned int total_combos = 1 << border_length;
 
-	auto map_for_cl = std::vector<char>();
+	point_set empty_pts_set;
+	auto cell_indices = vector<int>(map.cells.size(), -1);
+	for(auto i = 0; i < border.cells.size(); i++)
+	{
+		auto& c = border.cells[i];
+		cell_indices[c.pt.x * map.height + c.pt.y] = i;
+		auto& entry = map.neighbour_cache_get(c.pt).by_state[cell_state_empty];
+		for(auto& cell : entry)
+		{
+			empty_pts_set.insert(cell.pt);
+		}
+	}
+
+	auto empty_pts = vector<int>();
+	for(auto& pt : empty_pts_set)
+	{
+		empty_pts.push_back(pt.x * map.height + pt.y);
+	}
+
+	auto map_for_cl = vector<unsigned char>();
+	map_for_cl.reserve(map.cells.size() * 9);
 	for(auto i = 0; i < map.cells.size(); i++)
 	{
 		auto& c = map.cells[i];
 		auto& entry = map.neighbour_cache_get(c.pt);
 		auto& filled_neighbours = entry.by_state[cell_state_filled];
+
+		//assert(filled_neighbours.size() != 0);
+
+		auto header_byte = static_cast<unsigned char>((c.hint << 4) | filled_neighbours.size());
+		map_for_cl.push_back(header_byte);
+
 		for(auto j = 0; j < 8; j++)
 		{
 			if(j < filled_neighbours.size())
 			{
-				
+				auto& neighbour = filled_neighbours[j];
+				auto& cell_index = cell_indices[neighbour.pt.x * map.height + neighbour.pt.y];
+				auto neighbour_byte = static_cast<unsigned char>(cell_index << 2);
+				auto flag = neighbour.state & cell_flags;
+				neighbour_byte |= flag >> 2;
+				map_for_cl.push_back(neighbour_byte);
+			}
+			else
+			{
+				map_for_cl.push_back(0xFF);
 			}
 		}
 	}
+
+	auto min = 0;
+	auto max = total_combos;
+
+	for(unsigned int combo = min; combo < max; combo++)
+	{
+		auto prediction_valid = cl_is_prediction_valid_fake(map_for_cl, combo, empty_pts, cell_indices);
+		if(prediction_valid)
+		{
+			point_map<bool> predictions;
+			predictions.resize(border_length);
+			for(unsigned int j = 0; j < border_length; j++)
+			{
+				auto& pt = border.cells[j].pt;
+				auto has_mine = (combo & (1 << j)) > 0;
+				predictions[pt] = has_mine;
+			}
+			border.valid_combinations.push_back(predictions);
+		}
+	}
+}
+
+bool solver_service_separation_combination_finding::cl_is_prediction_valid_fake(const vector<unsigned char>& map, unsigned int prediction, const vector<int>& empty_pts, const vector<int>& cell_indices) const
+{
+	for(auto& pt : empty_pts)
+	{
+		auto neighbours_with_mine = 0;
+		//auto& filled_neighbours = map.neighbour_cache[pt.pt.x * map.height + pt.pt.y].by_state[cell_state_filled];
+		auto header_offset = pt * 9;
+		auto& header = map[header_offset];
+		auto neighbour_count = header & 0x0F;
+		auto hint = header >> 4;
+		for(auto i = 1; i <= neighbour_count; i++)
+		//for(auto& neighbour : filled_neighbours)
+		{
+			auto& neighbour = map[header_offset + i];
+			auto flag = neighbour & 0x03;
+			switch(flag)
+			{
+			case cell_flag_has_mine >> 2:
+				++neighbours_with_mine;
+				break;
+			case cell_flag_doesnt_have_mine >> 2:
+				break;
+			default:
+				unsigned int cell_index = neighbour >> 2;
+				auto verdict = (prediction & (1 << cell_index)) > 0;
+				if(verdict)
+				{
+					++neighbours_with_mine;
+				}
+				break;
+			}
+		}
+
+		if(neighbours_with_mine != hint)
+		{
+			return false;
+		}
+	}
+	return true;
 }

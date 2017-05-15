@@ -121,8 +121,8 @@ int main(int argc, char* argv[])
 	MoveWindow(wh, rect.left, 50, 1300, 950, TRUE);
 #endif
 
-	//solve_from_file(argc, argv);
-	benchmark();
+	solve_from_file(argc, argv);
+	//benchmark();
 	
 	cout << "Press any key to continue" << endl;
 	getc(stdin);
