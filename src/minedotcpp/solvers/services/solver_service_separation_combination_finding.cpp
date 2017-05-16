@@ -5,6 +5,7 @@
 #include <mutex>
 #include <queue>
 #include "solver_service_separation_combination_finding.h"
+#include <CL/cl.hpp>
 
 using namespace minedotcpp;
 using namespace solvers;
@@ -166,18 +167,177 @@ bool solver_service_separation_combination_finding::is_prediction_valid(const so
 	return true;
 }
 
-void solver_service_separation_combination_finding::cl_find_valid_border_cell_combinations(solver_map& map, border& border) const
+void do_open_cl_things(vector<unsigned char>& map, vector<int>& empty_pts, vector<int>& results, int max_prediction)
+{
+	auto platforms = vector<cl::Platform>();
+	cl::Device device;
+	cl::Platform::get(&platforms);
+
+	for(auto i = 0; i < platforms.size(); ++i)
+	{
+		auto& platform = platforms[i];
+		auto platform_name = platform.getInfo<CL_PLATFORM_NAME>();
+		auto platform_version = platform.getInfo<CL_PLATFORM_VERSION>();
+		cout << "Platform " << i << endl << platform_name << endl << platform_version << endl << endl;
+		auto devices = vector<cl::Device>();
+		platform.getDevices(CL_DEVICE_TYPE_ALL, &devices);
+
+		for(auto j = 0; j < devices.size(); ++j)
+		{
+			auto& dev = devices[j];
+			if(i == 0 && j == 1)
+			{
+				device = dev;
+			}
+			auto device_type = dev.getInfo<CL_DEVICE_TYPE>();
+			string device_type_str;
+			switch(device_type)
+			{
+			case CL_DEVICE_TYPE_CPU:
+				device_type_str = "CPU";
+				break;
+			case CL_DEVICE_TYPE_GPU:
+				device_type_str = "GPU";
+				break;
+			case CL_DEVICE_TYPE_ACCELERATOR:
+				device_type_str = "ACCELERATOR";
+				break;
+			default:
+				device_type_str = device_type;
+			}
+			cout << "  Device " << j << ":" << endl;
+			cout << "  " << device_type_str << endl;
+			cout << "  " << dev.getInfo<CL_DEVICE_NAME>() << endl;
+			cout << "  " << dev.getInfo<CL_DEVICE_GLOBAL_MEM_SIZE>() / (1024 * 1024) << " MB total memory" << endl;
+			cout << "  " << dev.getInfo<CL_DEVICE_LOCAL_MEM_SIZE>() << " B local memory" << endl;
+			cout << "  " << dev.getInfo<CL_DEVICE_MAX_COMPUTE_UNITS>() << " max compute units" << endl;
+			cout << "  " << dev.getInfo<CL_DEVICE_MAX_CLOCK_FREQUENCY>() << " MHz max clock frequency" << endl;
+			cout << endl;
+		}
+
+		cout << "-------------------------------" << endl << endl;
+	}
+
+	cout << "Selected: " << device.getInfo<CL_DEVICE_NAME>() << endl;
+
+	string cl_code = R"(
+
+//#pragma OPENCL EXTENSION cl_khr_local_int32_base_atomics : enable
+#pragma OPENCL EXTENSION cl_khr_global_int32_base_atomics : enable
+
+__kernel void ArrayStuff(__global unsigned char* restrict map, __global int* restrict empty_pts, __global int* restrict results, __global int* increment)
+{
+	//results[10] = get_local_size(0);
+
+	size_t local_id = get_local_id(0);
+	size_t global_id = get_global_id(0);
+	size_t group_id = get_group_id(0);
+	
+	int prediction = global_id;
+	
+	unsigned char prediction_valid = 1;
+	for(int i = 0; i < 32; i++)
+	{
+		int empty_pt = empty_pts[i];
+		if(empty_pt == -1)
+		{
+			break;
+		}
+		
+		int neighbours_with_mine = 0;
+		int header_offset = empty_pt * 9;
+		unsigned char header = map[header_offset];
+		int neighbour_count = header & 0x0F;
+		int hint = header >> 4;
+		for(int j = 1; j <= neighbour_count; j++)
+		{
+			unsigned char neighbour = map[header_offset + j];
+			unsigned char flag = neighbour & 0x03;
+			switch(flag)
+			{
+			case 1:
+				++neighbours_with_mine;
+				break;
+			case 2:
+				break;
+			default:
+			{
+				unsigned char cell_index = neighbour >> 2;
+				unsigned char verdict = (prediction & (1 << cell_index)) > 0;
+				if(verdict)
+				{
+					++neighbours_with_mine;
+				}
+				break;
+			}
+			}
+		}
+		
+		/*if(prediction == 1 && i == 1)
+		{
+			results[prediction * 8] = prediction;
+			results[prediction * 8 + 1] = neighbours_with_mine;
+			results[prediction * 8 + 2] = hint;
+			results[prediction * 8 + 3] = i;
+		}*/
+
+		if(neighbours_with_mine != hint)
+		{
+			prediction_valid = 0;
+			break;
+		}
+	}
+	
+	if(prediction_valid)
+	{
+		results[atomic_inc(increment)] = prediction;
+	}
+
+	//results[global_id] = global_id;
+}
+	
+	)";
+
+	auto sources = cl::Program::Sources(1, std::make_pair(cl_code.c_str(), cl_code.length() + 1));
+	auto context = cl::Context(device);
+	auto program = cl::Program(context, sources);
+
+	cl_int err = 0;
+	err = program.build("-cl-std=CL1.2");
+
+	auto offs = 0;
+	auto map_buf = cl::Buffer(context, CL_MEM_READ_ONLY | CL_MEM_HOST_NO_ACCESS | CL_MEM_COPY_HOST_PTR, map.size(), map.data(), &err);
+	auto empty_pts_buf = cl::Buffer(context, CL_MEM_READ_ONLY | CL_MEM_HOST_NO_ACCESS | CL_MEM_COPY_HOST_PTR, sizeof(int) * empty_pts.size(), empty_pts.data(), &err);
+	auto results_buf = cl::Buffer(context, CL_MEM_WRITE_ONLY | CL_MEM_HOST_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(int) * results.size(), results.data(), &err);
+	auto inc_buf = cl::Buffer(context, CL_MEM_READ_WRITE | CL_MEM_HOST_NO_ACCESS | CL_MEM_COPY_HOST_PTR, sizeof(int), &offs, &err);
+
+	auto kernel = cl::Kernel(program, "ArrayStuff");
+
+	err = kernel.setArg(0, map_buf);
+	err = kernel.setArg(1, empty_pts_buf);
+	err = kernel.setArg(2, results_buf);
+	err = kernel.setArg(3, inc_buf);
+
+	auto queue = cl::CommandQueue(context, device);
+
+	auto run_err = queue.enqueueNDRangeKernel(kernel, cl::NullRange, cl::NDRange(max_prediction), cl::NullRange);
+	auto read_err = queue.enqueueReadBuffer(results_buf, CL_TRUE, 0, sizeof(int) * results.size(), results.data());
+
+	cl::finish();
+}
+
+void solver_service_separation_combination_finding::cl_find_valid_border_cell_combinations(solver_map& original_map, border& border) const
 {
 	auto border_length = border.cells.size();
 	unsigned int total_combos = 1 << border_length;
 
 	point_set empty_pts_set;
-	auto cell_indices = vector<int>(map.cells.size(), -1);
+	auto cell_indices = vector<int>(original_map.cells.size(), -1);
 	for(auto i = 0; i < border.cells.size(); i++)
 	{
 		auto& c = border.cells[i];
-		cell_indices[c.pt.x * map.height + c.pt.y] = i;
-		auto& entry = map.neighbour_cache_get(c.pt).by_state[cell_state_empty];
+		cell_indices[c.pt.x * original_map.height + c.pt.y] = i;
+		auto& entry = original_map.neighbour_cache_get(c.pt).by_state[cell_state_empty];
 		for(auto& cell : entry)
 		{
 			empty_pts_set.insert(cell.pt);
@@ -187,36 +347,40 @@ void solver_service_separation_combination_finding::cl_find_valid_border_cell_co
 	auto empty_pts = vector<int>();
 	for(auto& pt : empty_pts_set)
 	{
-		empty_pts.push_back(pt.x * map.height + pt.y);
+		empty_pts.push_back(pt.x * original_map.height + pt.y);
+	}
+	for(auto i = empty_pts.size(); i < 32; i++)
+	{
+		empty_pts.push_back(-1);
 	}
 
-	auto map_for_cl = vector<unsigned char>();
-	map_for_cl.reserve(map.cells.size() * 9);
-	for(auto i = 0; i < map.cells.size(); i++)
+	auto map = vector<unsigned char>();
+	map.reserve(original_map.cells.size() * 9);
+	for(auto i = 0; i < original_map.cells.size(); i++)
 	{
-		auto& c = map.cells[i];
-		auto& entry = map.neighbour_cache_get(c.pt);
+		auto& c = original_map.cells[i];
+		auto& entry = original_map.neighbour_cache_get(c.pt);
 		auto& filled_neighbours = entry.by_state[cell_state_filled];
 
 		//assert(filled_neighbours.size() != 0);
 
 		auto header_byte = static_cast<unsigned char>((c.hint << 4) | filled_neighbours.size());
-		map_for_cl.push_back(header_byte);
+		map.push_back(header_byte);
 
 		for(auto j = 0; j < 8; j++)
 		{
 			if(j < filled_neighbours.size())
 			{
 				auto& neighbour = filled_neighbours[j];
-				auto& cell_index = cell_indices[neighbour.pt.x * map.height + neighbour.pt.y];
+				auto& cell_index = cell_indices[neighbour.pt.x * original_map.height + neighbour.pt.y];
 				auto neighbour_byte = static_cast<unsigned char>(cell_index << 2);
 				auto flag = neighbour.state & cell_flags;
 				neighbour_byte |= flag >> 2;
-				map_for_cl.push_back(neighbour_byte);
+				map.push_back(neighbour_byte);
 			}
 			else
 			{
-				map_for_cl.push_back(0xFF);
+				map.push_back(0xFF);
 			}
 		}
 	}
@@ -224,9 +388,74 @@ void solver_service_separation_combination_finding::cl_find_valid_border_cell_co
 	auto min = 0;
 	auto max = total_combos;
 
-	for(unsigned int combo = min; combo < max; combo++)
+	auto results = vector<int>(1024*16,-1);
+
+	do_open_cl_things(map, empty_pts, results, max);
+
+	for(auto& prediction : results)
 	{
-		auto prediction_valid = cl_is_prediction_valid_fake(map_for_cl, combo, empty_pts, cell_indices);
+		if(prediction == -1)
+		{
+			break;
+		}
+		point_map<bool> predictions;
+		predictions.resize(border_length);
+		for(unsigned int j = 0; j < border_length; j++)
+		{
+			auto& pt = border.cells[j].pt;
+			auto has_mine = (prediction & (1 << j)) > 0;
+			predictions[pt] = has_mine;
+		}
+		border.valid_combinations.push_back(predictions);
+	}
+	return;
+	for(unsigned int prediction = min; prediction < max; prediction++)
+	{
+		//bool prediction_valid = cl_is_prediction_valid_fake(map, empty_pts, prediction);
+		unsigned char prediction_valid = 1;
+		for(int i = 0; i < 32; i++)
+		{
+			int empty_pt = empty_pts[i];
+			if(empty_pt == -1)
+			{
+				break;
+			}
+			int neighbours_with_mine = 0;
+			int header_offset = empty_pt * 9;
+			unsigned char header = map[header_offset];
+			int neighbour_count = header & 0x0F;
+			int hint = header >> 4;
+			for(int j = 1; j <= neighbour_count; j++)
+			{
+				unsigned char neighbour = map[header_offset + j];
+				unsigned char flag = neighbour & 0x03;
+				switch(flag)
+				{
+				case 1:
+					++neighbours_with_mine;
+					break;
+				case 2:
+					break;
+				default:
+				{
+					unsigned char cell_index = neighbour >> 2;
+					unsigned char verdict = (prediction & (1 << cell_index)) > 0;
+					if(verdict)
+					{
+						++neighbours_with_mine;
+					}
+					break;
+				}
+				}
+			}
+
+			if(neighbours_with_mine != hint)
+			{
+				prediction_valid = 0;
+				break;
+			}
+		}
+		
 		if(prediction_valid)
 		{
 			point_map<bool> predictions;
@@ -234,7 +463,7 @@ void solver_service_separation_combination_finding::cl_find_valid_border_cell_co
 			for(unsigned int j = 0; j < border_length; j++)
 			{
 				auto& pt = border.cells[j].pt;
-				auto has_mine = (combo & (1 << j)) > 0;
+				auto has_mine = (prediction & (1 << j)) > 0;
 				predictions[pt] = has_mine;
 			}
 			border.valid_combinations.push_back(predictions);
@@ -242,20 +471,23 @@ void solver_service_separation_combination_finding::cl_find_valid_border_cell_co
 	}
 }
 
-bool solver_service_separation_combination_finding::cl_is_prediction_valid_fake(const vector<unsigned char>& map, unsigned int prediction, const vector<int>& empty_pts, const vector<int>& cell_indices) const
+bool solver_service_separation_combination_finding::cl_is_prediction_valid_fake(const vector<unsigned char>& map, const vector<int>& empty_pts, unsigned int prediction) const
 {
-	for(auto& pt : empty_pts)
+	for(int i = 0; i < 32; i++)
 	{
+		int pt = empty_pts[i];
+		if(pt == -1)
+		{
+			break;
+		}
 		auto neighbours_with_mine = 0;
-		//auto& filled_neighbours = map.neighbour_cache[pt.pt.x * map.height + pt.pt.y].by_state[cell_state_filled];
 		auto header_offset = pt * 9;
 		auto& header = map[header_offset];
 		auto neighbour_count = header & 0x0F;
 		auto hint = header >> 4;
-		for(auto i = 1; i <= neighbour_count; i++)
-		//for(auto& neighbour : filled_neighbours)
+		for(auto j = 1; j <= neighbour_count; j++)
 		{
-			auto& neighbour = map[header_offset + i];
+			auto& neighbour = map[header_offset + j];
 			auto flag = neighbour & 0x03;
 			switch(flag)
 			{

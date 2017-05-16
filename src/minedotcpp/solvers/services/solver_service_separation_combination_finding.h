@@ -40,7 +40,7 @@ namespace minedotcpp
 
 
 				
-				bool cl_is_prediction_valid_fake(const std::vector<unsigned char>& map, unsigned prediction, const std::vector<int>& empty_pts, const std::vector<int>& cell_indices) const;
+				bool cl_is_prediction_valid_fake(const std::vector<unsigned char>& map, const std::vector<int>& empty_pts, unsigned prediction) const;
 			};
 		}
 	}
