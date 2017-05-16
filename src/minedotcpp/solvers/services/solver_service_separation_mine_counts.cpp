@@ -288,7 +288,7 @@ void solver_service_separation_mine_counts::get_variable_mine_count_borders_prob
 	}
 
 	auto thread_count = thread::hardware_concurrency();
-	if (total_combos > settings.multithread_variable_mine_count_borders_probabilities && thread_count > 1)
+	if (total_combos > settings.variable_mine_count_borders_probabilities_multithread_use_from && thread_count > 1)
 	{
 		auto thread_load = total_combos / thread_count;
 		vector<thread> threads;

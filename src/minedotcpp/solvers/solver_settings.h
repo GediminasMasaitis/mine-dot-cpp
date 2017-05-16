@@ -39,8 +39,16 @@ namespace minedotcpp
 			bool mine_count_solve_non_border = true;
 
 			int give_up_from_size = 31;
-			int multithread_valid_combination_search_from_size = 50; //2097152
-			int multithread_variable_mine_count_borders_probabilities = 65536;
+
+			bool valid_combination_search_open_cl = true;
+			int valid_combination_search_open_cl_use_from_size = 16;
+			int valid_combination_search_open_cl_platform_id = 1;
+			int valid_combination_search_open_cl_device_id = 0;
+
+			bool valid_combination_search_multithread = false;
+			int valid_combination_search_multithread_use_from_size = 22; //2097152
+
+			int variable_mine_count_borders_probabilities_multithread_use_from = 65536;
 
 			bool guess_if_no_no_mine_verdict = false;
 			bool guess_if_no_verdict = false;

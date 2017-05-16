@@ -70,12 +70,8 @@ void solver_service_separation::solve_border(solver_map& m, border& b, bool allo
 		borders.push_back(b);
 		return;
 	}
-#define USE_CL
-#ifdef USE_CL
-	combination_service.cl_find_valid_border_cell_combinations(m, b);
-#else
+
 	combination_service.find_valid_border_cell_combinations(m, b);
-#endif
 
 	dump_predictions(b.valid_combinations);
 

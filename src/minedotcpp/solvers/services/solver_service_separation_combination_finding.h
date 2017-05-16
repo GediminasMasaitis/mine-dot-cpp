@@ -4,17 +4,8 @@
 #include "../border.h"
 #include "solver_service_base.h"
 #include <mutex>
-
-// TODO: For testing purposes, an easy way to switch between the two. Should be removed in final version
-//#define CELL_INDICES_MAP
-#ifdef CELL_INDICES_MAP
-typedef minedotcpp::common::point_map<int> CELL_INDICES_T;
-#define CELL_INDICES_ELEMENT(ci, pt, m) ci[pt]
-#define CELL_INDICES_RESIZE(ci, b, m) ci.resize(b.cells.size())
-#else
-typedef std::vector<int> CELL_INDICES_T;
-#define CELL_INDICES_ELEMENT(ci, pt, m) ci[pt.x * m.height + pt.y]
-#define CELL_INDICES_RESIZE(ci, b, m) ci.resize(m.width * m.height)
+#ifdef ENABLE_OPEN_CL
+#include <CL/cl.hpp>
 #endif
 
 namespace minedotcpp
@@ -26,21 +17,27 @@ namespace minedotcpp
 			class solver_service_separation_combination_finding : private solver_service_base
 			{
 			public:
-				explicit solver_service_separation_combination_finding(const solver_settings& settings) : solver_service_base(settings)
+				explicit solver_service_separation_combination_finding(const solver_settings& settings)
+					: solver_service_base(settings)
+#ifdef ENABLE_OPEN_CL
+					, cl_find_combination_program(cl_build_find_combination_program())
+#endif
 				{
 				}
-
-				void find_valid_border_cell_combinations(solver_map& map, border& border) const;
-				void cl_find_valid_border_cell_combinations(solver_map& map, border& border) const;
-
-			private:
-				bool is_prediction_valid(const solver_map& map, unsigned prediction, const std::vector<common::cell>& empty_cells, const CELL_INDICES_T& cell_indices) const;
-				int SWAR(int i) const;
-				void thr_find_combos(const solver_map& map, border& border, unsigned min, unsigned max, const std::vector<common::cell>& empty_cells, const CELL_INDICES_T& cell_indices, std::mutex& sync) const;
-
-
 				
-				bool cl_is_prediction_valid_fake(const std::vector<unsigned char>& map, const std::vector<int>& empty_pts, unsigned prediction) const;
+				void find_valid_border_cell_combinations(solver_map& map, border& border) const;
+			private:
+
+#ifdef ENABLE_OPEN_CL
+				const cl::Program cl_find_combination_program;
+				cl::Program cl_build_find_combination_program();
+				void cl_validate_predictions(std::vector<unsigned char>& map, std::vector<int>& results, unsigned max_prediction) const;
+#endif
+
+				int SWAR(int i) const;
+				void get_combination_search_map(solver_map& original_map, border& border, std::vector<unsigned char>& m) const;
+				void thr_validate_predictions(std::vector<unsigned char>& map, std::vector<int>& results, unsigned total) const;
+				void validate_predictions(std::vector<unsigned char>& map, std::vector<int>& results, unsigned min, unsigned max, std::mutex* sync) const;
 			};
 		}
 	}
