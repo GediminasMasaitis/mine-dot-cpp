@@ -60,11 +60,10 @@ void solve_from_file(int argc, char* argv[])
 	}
 
 	solver_settings settings;
-	settings.trivial_solve = false;
 	solver s(settings);
 	std::chrono::high_resolution_clock clock;
-	auto start_time = clock.now();
 	auto results = point_map<solver_result>();
+	auto start_time = clock.now();
 	s.solve(test_map, results);
 	auto end_time = clock.now();
 	auto diff = end_time - start_time;

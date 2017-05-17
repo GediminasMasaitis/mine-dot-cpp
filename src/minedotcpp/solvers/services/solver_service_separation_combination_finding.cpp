@@ -15,120 +15,13 @@ using namespace services;
 using namespace common;
 using namespace std;
 
-/*void solver_service_separation_combination_finding::thr_find_combos(const solver_map& map, border& border, unsigned int min, unsigned int max, const vector<cell>& empty_cells, const CELL_INDICES_T& cell_indices, mutex& sync) const
-{
-	auto border_length = border.cells.size();
-	auto all_remaining_cells_in_border = map.undecided_count == border_length;
-	// TODO: Macro because calling the thread function here directly causes it to slow down about 50% for some reason. Figure out why
-#define FIND_COMBOS_BODY(lck) \
-for(unsigned int combo = min; combo < max; combo++)\
-{\
-	if(map.remaining_mine_count > 0)\
-	{\
-		auto bits_set = SWAR(combo);\
-		if(bits_set > map.remaining_mine_count)\
-		{\
-			continue;\
-		}\
-		if(all_remaining_cells_in_border && bits_set != map.remaining_mine_count)\
-		{\
-			continue;\
-		}\
-	}\
-\
-	auto prediction_valid = is_prediction_valid(map, combo, empty_cells, cell_indices);\
-	if(prediction_valid)\
-	{\
-		point_map<bool> predictions;\
-		predictions.resize(border_length);\
-		for(unsigned int j = 0; j < border_length; j++)\
-		{\
-			auto& pt = border.cells[j].pt;\
-			auto has_mine = (combo & (1 << j)) > 0;\
-			predictions[pt] = has_mine;\
-		}\
-		lck;\
-		border.valid_combinations.push_back(predictions);\
-	}\
-}
-	FIND_COMBOS_BODY(std::lock_guard<std::mutex> block(sync))
-}
-
-void solver_service_separation_combination_finding::find_valid_border_cell_combinations(solver_map& map, border& border) const
-{
-	auto border_length = border.cells.size();
-
-	const int max_size = 31;
-	if(border_length > max_size)
-	{
-		// TODO: handle too big border
-		//throw new InvalidDataException($"Border with {borderLength} cells is too large, maximum {maxSize} cells allowed");
-	}
-	unsigned int total_combos = 1 << border_length;
-
-
-	point_set empty_pts;
-	//border.cell_indices.resize(border.cells.size());
-	CELL_INDICES_T cell_indices;
-	CELL_INDICES_RESIZE(cell_indices, border, map);
-	//border.cell_indices.resize(map.width * map.height);
-	for(auto i = 0; i < border.cells.size(); i++)
-	{
-		auto& c = border.cells[i];
-		CELL_INDICES_ELEMENT(cell_indices, c.pt, map) = i;
-		//border.cell_indices[c.pt] = i;
-		auto& entry = map.neighbour_cache_get(c.pt).by_state[cell_state_empty];
-		for(auto& cell : entry)
-		{
-			empty_pts.insert(cell.pt);
-		}
-	}
-
-	auto all_remaining_cells_in_border = map.undecided_count == border_length;
-	vector<cell> empty_cells;
-	empty_cells.reserve(empty_pts.size());
-	for(auto& pt : empty_pts)
-	{
-		empty_cells.push_back(map.cell_get(pt));
-	}
-
-	auto thread_count = thread::hardware_concurrency();
-	if(border_length > settings.valid_combination_search_multithread_use_from_size && thread_count > 1)
-	{
-		mutex sync;
-		auto thread_load = total_combos / thread_count;
-		vector<thread> threads;
-		for(unsigned i = 0; i < thread_count; i++)
-		{
-			unsigned int min = thread_load * i;
-			unsigned int max = min + thread_load;
-			if(i == thread_count - 1)
-			{
-				max = total_combos;
-			}
-			threads.emplace_back([this, &map, &border, min, max, &empty_cells, &cell_indices, &sync]()
-			{
-				thr_find_combos(map, border, min, max, empty_cells, cell_indices, sync);
-			});
-			//thr_find_combos(map, border, min, max, empty_cells, cell_indices, sync);
-		}
-
-		for(auto& thr : threads)
-		{
-			thr.join();
-		}
-	}
-	else
-	{
-		unsigned int min = 0;
-		unsigned int max = total_combos;
-		//thr_find_combos(map, border, 0, total_combos, empty_cells, cell_indices, sync);
-		FIND_COMBOS_BODY(;);
-	}
-}*/
 #ifdef ENABLE_OPEN_CL
-cl::Program solver_service_separation_combination_finding::cl_build_find_combination_program()
+void solver_service_separation_combination_finding::cl_build_find_combination_program()
 {
+	if(!settings.valid_combination_search_open_cl)
+	{
+		return;
+	}
 	auto platforms = vector<cl::Platform>();
 	auto devices = vector<cl::Device>();
 	cl::Platform::get(&platforms);
@@ -198,25 +91,23 @@ __kernel void FindCombination(__constant unsigned char* map, __global int* resul
 	)";
 
 	auto sources = cl::Program::Sources(1, std::make_pair(cl_code.c_str(), cl_code.length() + 1));
-	static auto context = cl::Context(device);
-	auto program = cl::Program(context, sources);
-	auto err = program.build("-cl-std=CL2.0");
-	auto context2 = program.getInfo<CL_PROGRAM_CONTEXT>(&err);
+	cl_context = cl::Context(device);
+	cl_find_combination_program = cl::Program(cl_context, sources);
+	auto err = cl_find_combination_program.build("-cl-std=CL1.2");
+	auto context2 = cl_find_combination_program.getInfo<CL_PROGRAM_CONTEXT>(&err);
 	auto devices2 = context2.getInfo<CL_CONTEXT_DEVICES>(&err);
-	return program;
 }
 
 void solver_service_separation_combination_finding::cl_validate_predictions(vector<unsigned char>& map, vector<int>& results, unsigned int total) const
 {
 	cl_int err;
-	auto context = cl_find_combination_program.getInfo<CL_PROGRAM_CONTEXT>(&err);
-	auto devices = context.getInfo<CL_CONTEXT_DEVICES>(&err);
+	auto devices = cl_context.getInfo<CL_CONTEXT_DEVICES>(&err);
 	auto device = devices[0];
 
 	auto offs = 0;
-	auto map_buf = cl::Buffer(context, CL_MEM_READ_ONLY | CL_MEM_HOST_NO_ACCESS | CL_MEM_COPY_HOST_PTR, map.size(), map.data(), &err);
-	auto results_buf = cl::Buffer(context, CL_MEM_WRITE_ONLY | CL_MEM_HOST_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(int) * results.size(), results.data(), &err);
-	auto inc_buf = cl::Buffer(context, CL_MEM_READ_WRITE | CL_MEM_HOST_NO_ACCESS | CL_MEM_COPY_HOST_PTR, sizeof(int), &offs, &err);
+	auto map_buf = cl::Buffer(cl_context, CL_MEM_READ_ONLY | CL_MEM_HOST_NO_ACCESS | CL_MEM_COPY_HOST_PTR, map.size(), map.data(), &err);
+	auto results_buf = cl::Buffer(cl_context, CL_MEM_WRITE_ONLY | CL_MEM_HOST_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(int) * results.size(), results.data(), &err);
+	auto inc_buf = cl::Buffer(cl_context, CL_MEM_READ_WRITE | CL_MEM_HOST_NO_ACCESS | CL_MEM_COPY_HOST_PTR, sizeof(int), &offs, &err);
 
 	auto kernel = cl::Kernel(cl_find_combination_program, "FindCombination");
 
@@ -224,7 +115,7 @@ void solver_service_separation_combination_finding::cl_validate_predictions(vect
 	err = kernel.setArg(1, results_buf);
 	err = kernel.setArg(2, inc_buf);
 
-	auto queue = cl::CommandQueue(context, device);
+	auto queue = cl::CommandQueue(cl_context, device);
 
 	auto run_err = queue.enqueueNDRangeKernel(kernel, cl::NullRange, cl::NDRange(total), cl::NullRange/*cl::NDRange(1)*/);
 	auto read_err = queue.enqueueReadBuffer(results_buf, CL_TRUE, 0, sizeof(int) * results.size(), results.data());
@@ -232,22 +123,22 @@ void solver_service_separation_combination_finding::cl_validate_predictions(vect
 	cl::finish();
 }
 #endif
-void solver_service_separation_combination_finding::validate_predictions(vector<unsigned char>& map, vector<int>& results, unsigned int min, unsigned int max, mutex* sync) const
+void solver_service_separation_combination_finding::validate_predictions(vector<unsigned char>& m, vector<int>& results, unsigned int min, unsigned int max, mutex* sync) const
 {
 	for(unsigned int prediction = min; prediction < max; prediction++)
 	{
 		unsigned char prediction_valid = 1;
-		unsigned char empty_pts_count = map[0];
+		unsigned char empty_pts_count = m[0];
 		for(int i = 0; i < empty_pts_count; i++)
 		{
 			int neighbours_with_mine = 0;
 			int header_offset = 1 + i * 9;
-			unsigned char header = map[header_offset];
+			unsigned char header = m[header_offset];
 			int neighbour_count = header & 0x0F;
 			int hint = header >> 4;
 			for(int j = 1; j <= neighbour_count; j++)
 			{
-				unsigned char neighbour = map[header_offset + j];
+				unsigned char neighbour = m[header_offset + j];
 				unsigned char flag = neighbour & 0x03;
 				switch(flag)
 				{
@@ -291,7 +182,7 @@ void solver_service_separation_combination_finding::validate_predictions(vector<
 	}
 }
 
-void solver_service_separation_combination_finding::thr_validate_predictions(vector<unsigned char>& map, vector<int>& results, unsigned int total) const
+void solver_service_separation_combination_finding::thr_validate_predictions(vector<unsigned char>& m, vector<int>& results, unsigned int total) const
 {
 	auto thread_count = thread::hardware_concurrency();
 	auto thread_load = total / thread_count;
@@ -306,9 +197,9 @@ void solver_service_separation_combination_finding::thr_validate_predictions(vec
 			max = total;
 		}
 
-		threads.emplace_back([this, &map, &results, min, max, &sync]()
+		threads.emplace_back([this, &m, &results, min, max, &sync]()
 		{
-			validate_predictions(map, results, min, max, &sync);
+			validate_predictions(m, results, min, max, &sync);
 		});
 	}
 
@@ -318,7 +209,7 @@ void solver_service_separation_combination_finding::thr_validate_predictions(vec
 	}
 }
 
-int solver_service_separation_combination_finding::SWAR(int i) const
+int solver_service_separation_combination_finding::find_hamming_weight(int i) const
 {
 	i = i - ((i >> 1) & 0x55555555);
 	i = (i & 0x33333333) + ((i >> 2) & 0x33333333);
@@ -378,14 +269,16 @@ void solver_service_separation_combination_finding::get_combination_search_map(s
 	}
 }
 
-void solver_service_separation_combination_finding::find_valid_border_cell_combinations(solver_map& original_map, border& border) const
+void solver_service_separation_combination_finding::find_valid_border_cell_combinations(solver_map& solver_map, border& border) const
 {
 	auto border_length = border.cells.size();
 	auto total = static_cast<unsigned int>(1 << border_length);
 	auto m = vector<unsigned char>();
 	auto results = vector<int>();
-	get_combination_search_map(original_map, border, m);
+	get_combination_search_map(solver_map, border, m);
+	auto all_remaining_cells_in_border = solver_map.undecided_count == border_length;
 	cout << "Border size: " << border_length << endl;
+	cout << "All remaining mines in border" << endl;
 #ifdef ENABLE_OPEN_CL
 	if(settings.valid_combination_search_open_cl && border_length >= settings.valid_combination_search_open_cl_use_from_size)
 	{
@@ -408,6 +301,18 @@ void solver_service_separation_combination_finding::find_valid_border_cell_combi
 		if(prediction == -1)
 		{
 			break;
+		}
+		if (solver_map.remaining_mine_count > 0)
+		{
+			auto bits_set = find_hamming_weight(prediction);
+			if (bits_set > solver_map.remaining_mine_count)
+			{
+				continue;
+			}
+			if (all_remaining_cells_in_border && bits_set != solver_map.remaining_mine_count)
+			{
+				continue;
+			}
 		}
 		point_map<bool> predictions;
 		predictions.resize(border_length);

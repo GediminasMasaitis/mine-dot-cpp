@@ -49,7 +49,6 @@ void solver::solve(const map& base_map, point_map<solver_result>& results) const
 
 	if (settings.separation_solve)
 	{
-		auto separation_service = solver_service_separation(settings);
 		separation_service.solve_separation(m, probabilities, verdicts);
 	}
 
