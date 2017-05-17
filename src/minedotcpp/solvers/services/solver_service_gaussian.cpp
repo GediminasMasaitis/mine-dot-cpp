@@ -127,6 +127,20 @@ template<class It> It uniquify(It begin, It const end)
 	return begin;
 }
 
+class column_data
+{
+public:
+	int index;
+	int cnt;
+};
+
+class row_separation_result
+{
+public:
+	int column_index;
+	int constant;
+};
+
 void solver_service_gaussian::reduce_matrix(vector<vector<int>>& matrix, vector<point>& coordinates, point_map<bool>& allVerdicts, const matrix_reduction_parameters& parameters) const
 {
 	if(matrix.size() == 0)
@@ -179,45 +193,81 @@ void solver_service_gaussian::reduce_matrix(vector<vector<int>>& matrix, vector<
 		return index_lhs < index_rhs;
 	});
 
-	/*matrix = matrix.Where(x = > Array.FindIndex(x, y = > y != 0) != -1).Distinct(new ArrayEqualityComparer<int>()).OrderBy(x = > Array.FindIndex(x, y = > y != 0)).ToList();
+	//matrix = matrix.Where(x = > Array.FindIndex(x, y = > y != 0) != -1).Distinct(new ArrayEqualityComparer<int>()).OrderBy(x = > Array.FindIndex(x, y = > y != 0)).ToList();
 	if(matrix.size() == 0)
 	{
 		return;
 	}
-	var splitsMade = false;
-	parameters = parameters ? ? new MatrixReductionParameters();
-	if(!parameters.SkipReduction)
+	auto splitsMade = false;
+	if(!parameters.skip_reduction)
 	{
-#if DEBUG
-		Debug.WriteLine(MatrixToString(matrix));
-#endif
-		var rows = matrix.size();
-		var cols = matrix[0].size();
+		auto rows = matrix.size();
+		auto cols = matrix[0].size();
 
-		var rowsRemaining = new HashSet<int>(Enumerable.Range(0, rows));
-		var m = matrix;
-		var columnsData = Enumerable.Range(0, cols - 1).Select(x = > new {Index = x, Cnt = m.size()(y = > y[x] != 0)}).Where(x = > x.Cnt > 1);
-		IEnumerable<int> columns;
-		if(parameters.ReverseColumns)
+		auto rows_remaining = google::dense_hash_set<int>();
+		rows_remaining.set_empty_key(-1);
+		rows_remaining.set_deleted_key(-2);
+
+		for(auto i = 0; i < rows; i++)
 		{
-			columns = columnsData.OrderByDescending(x = > parameters.OrderColumns ? x.Cnt : x.Index).Select(x = > x.Index);
+			rows_remaining.insert(i);
 		}
-		else
+
+		//auto& m = matrix;
+		//var columnsData = Enumerable.Range(0, cols - 1).Select(x = > new {Index = x, Cnt = m.Count(y = > y[x] != 0)}).Where(x = > x.Cnt > 1);
+		auto columns_data = vector<column_data>();
+		for(auto i = 0; i < cols - 1; i++)
 		{
-			columns = columnsData.OrderBy(x = > parameters.OrderColumns ? x.Cnt : x.Index).Select(x = > x.Index);
+			auto cnt = 0;
+			for(auto& row : matrix)
+			{
+				if(row[0] != 0)
+				{
+					cnt++;
+				}
+			}
+			if(cnt > 1)
+			{
+				columns_data.emplace_back(i, cnt);
+			}
+		}
+		
+		
+		std::sort(columns_data.begin(), columns_data.end(), [&parameters](const column_data& lhs, const column_data& rhs)
+		{
+			bool cmp;
+			if(parameters.order_columns)
+			{
+				cmp = lhs.cnt < rhs.cnt;
+			}
+			else
+			{
+				cmp = lhs.index < rhs.index;
+			}
+			if(parameters.reverse_columns)
+			{
+				cmp = !cmp;
+			}
+			return cmp;
+		});
+		auto columns = vector<int>();
+		columns.reserve(columns_data.size());
+		for(auto& col : columns_data)
+		{
+			columns.push_back(col.index);
 		}
 
 		//for (var col = 0; col < cols - 1; col++)
-		foreach(var col in columns)
+		for(auto& col : columns)
 		{
-			var row = -1;
-			if(parameters.ReverseRows)
+			auto row = -1;
+			if(parameters.reverse_rows)
 			{
 
-				for(var i = rows - 1; i >= 0; i--)
+				for(auto i = rows - 1; i >= 0; i--)
 				{
-					var candidateNum = matrix[i][col];
-					if((candidateNum == 1 || candidateNum == -1) && (!parameters.UseUniqueRows || rowsRemaining.Remove(i)))
+					auto candidateNum = matrix[i][col];
+					if((candidateNum == 1 || candidateNum == -1) && (!parameters.use_unique_rows || rows_remaining.erase(i)))
 					{
 						row = i;
 						break;
@@ -226,10 +276,10 @@ void solver_service_gaussian::reduce_matrix(vector<vector<int>>& matrix, vector<
 			}
 			else
 			{
-				for(var i = 0; i < rows; i++)
+				for(auto i = 0; i < rows; i++)
 				{
-					var candidateNum = matrix[i][col];
-					if((candidateNum == 1 || candidateNum == -1) && (!parameters.UseUniqueRows || rowsRemaining.Remove(i)))
+					auto candidateNum = matrix[i][col];
+					if((candidateNum == 1 || candidateNum == -1) && (!parameters.use_unique_rows || rows_remaining.erase(i)))
 					{
 						row = i;
 						break;
@@ -241,7 +291,7 @@ void solver_service_gaussian::reduce_matrix(vector<vector<int>>& matrix, vector<
 				continue;
 			}
 
-			var targetNum = matrix[row][col];
+			auto targetNum = matrix[row][col];
 			if(targetNum == -1)
 			{
 				for(int i = 0; i < cols; i++)
@@ -250,100 +300,83 @@ void solver_service_gaussian::reduce_matrix(vector<vector<int>>& matrix, vector<
 				}
 			}
 			targetNum = matrix[row][col];
-			//#if DEBUG
-			//                Debug.WriteLine($"Row: {row}");
-			//                Debug.WriteLine($"Col: {col}");
-			//                Debug.WriteLine(MatrixToString(matrix));
-			//#endif
-			if(targetNum != 1)
-			{
-				File.WriteAllText("badmatrix.txt", MatrixToString(matrix));
-				throw new Exception("coef!=1");
-				for(int i = 0; i < cols; i++)
-				{
-					matrix[row][i] = matrix[row][i] / targetNum;
-				}
-			}
 
-			for(var i = 0; i < rows; i++)
+			assert(targetNum == 1);
+
+			for(auto i = 0; i < rows; i++)
 			{
-				//var newRows = SeparateRow(matrix[i]).ToList();
-				//if (newRows.size() > 1)
-				//{
-				//    splitsMade = true;
-				//    matrix.RemoveAt(i);
-				//    foreach (var newRow in newRows)
-				//    {
-				//        matrix.Insert(i, newRow);
-				//    }
-				//    rows += newRows.size() - 1;
-				//    i += newRows.size() - 1;
-				//}
 				if(i == row)
 				{
 					continue;
 				}
-				var num = matrix[i][col];
+				auto num = matrix[i][col];
 				if(num != 0)
 				{
-					for(var j = 0; j < cols; j++)
+					for(auto j = 0; j < cols; j++)
 					{
 						matrix[i][j] -= matrix[row][j] * num;
 					}
-					//var newRowsAgain = SeparateRow(matrix[i]).ToList();
-					//if (newRowsAgain.size() > 1)
-					//{
-					//    splitsMade = true;
-					//    matrix.RemoveAt(i);
-					//    foreach (var newRow in newRowsAgain)
-					//    {
-					//        matrix.Insert(i, newRow);
-					//    }
-					//    rows += newRowsAgain.size() - 1;
-					//    i += newRowsAgain.size() - 1;
-					//}
 				}
 			}
 		}
-
-		//matrix = matrix.Where(x => Array.FindIndex(x, y => y != 0) != -1).OrderBy(x => Array.FindIndex(x, y => y != 0)).ToList();
 	}
-	var cellsToRemove = new List<RowSeparationResult>();
-	var rowList = new List<int[]>();
-	for(int i = 0; i < matrix.size(); i++)
+	auto cellsToRemove = vector<row_separation_result>();
+	auto rowList = vector<vector<int>>();
+	for(auto i = 0; i < matrix.size(); i++)
 	{
-		var row = matrix[i];
-		var rowResults = SeparateRow(row).ToList();
+		auto& row = matrix[i];
+		auto rowResults = vector<row_separation_result>();
+		// TODO SeparateRow(row, rowResults);
 		if(rowResults.size() > 0)
 		{
-			//splitsMade = true;
-			cellsToRemove.AddRange(rowResults);
+			for(auto& row_result: rowResults)
+			{
+				cellsToRemove.push_back(row_result);
+			}
 		}
 		else
 		{
-			rowList.Add(row);
+			rowList.push_back(row);
 		}
 	}
-	var columnsToRemove = new HashSet<int>(cellsToRemove.Select(x = > x.ColumnIndex));
-	foreach(var separationResult in cellsToRemove)
+	auto columnsToRemove = google::dense_hash_set<int>();
+	columnsToRemove.set_empty_key(-1);
+	columnsToRemove.set_deleted_key(-2);
+	for(auto& c : cellsToRemove)
 	{
-		var col = separationResult.ColumnIndex;
-		for(int i = 0; i < matrix.size(); i++)
+		columnsToRemove.insert(c.column_index);
+	}
+	for(auto& separationResult : cellsToRemove)
+	{
+		auto col = separationResult.column_index;
+		for(auto i = 0; i < matrix.size(); i++)
 		{
-			var num = matrix[i][col];
+			auto num = matrix[i][col];
 			if(num != 0)
 			{
 				//matrix[i][col] -= matrix[row][col]*num;
-				matrix[i][matrix[0].size() - 1] -= separationResult.Constant * num;
+				matrix[i][matrix[0].size() - 1] -= separationResult.constant * num;
 			}
 		}
-		allVerdicts[coordinates[col]] = separationResult.Constant == 1;
+		allVerdicts[coordinates[col]] = separationResult.constant == 1;
 	}
 	for(int i = 0; i < rowList.size(); i++)
 	{
-		rowList[i] = rowList[i].Where((x, index) = > !columnsToRemove.Contains(index)).ToArray();
+		for(auto& row : rowList)
+		{
+			auto new_row = vector<int>();
+			for(auto j = 0; j < row.size(); j++)
+			{
+				if(columnsToRemove.find(j) != columnsToRemove.end())
+				{
+					new_row.push_back(row[j]);
+				}
+			}
+			rowList[i] = new_row;
+		}
 	}
-	matrix = rowList.Where(x = > Array.FindIndex(x, y = > y != 0) != -1).OrderBy(x = > Array.FindIndex(x, y = > y != 0)).ToList();
+	
+	/*matrix = rowList.Where(x = > Array.FindIndex(x, y = > y != 0) != -1).OrderBy(x = > Array.FindIndex(x, y = > y != 0)).ToList();
 	coordinates = coordinates.Where((x, i) = > !columnsToRemove.Contains(i)).ToList();
 	//#if DEBUG
 	//            Debug.WriteLine(MatrixToString(matrix));
@@ -357,3 +390,53 @@ void solver_service_gaussian::reduce_matrix(vector<vector<int>>& matrix, vector<
 		ReduceMatrix(ref coordinates, ref matrix, allVerdicts, parameters);
 	}*/
 }
+
+/*private IEnumerable<RowSeparationResult> SeparateRow(int[] row)
+{
+	var constantIndex = row.Length - 1;
+	var constant = row[constantIndex];
+
+	var positiveSum = 0;
+	var negativeSum = 0;
+	for(int i = 0; i < row.Length - 1; i++)
+	{
+		var num = row[i];
+		if(num == 0)
+		{
+			continue;
+		}
+		if(num > 0)
+		{
+			positiveSum += num;
+		}
+		else
+		{
+			negativeSum += num;
+		}
+	}
+
+	if(constant == positiveSum || constant == negativeSum)
+	{
+		int forPositive;
+		int forNegative;
+		if(constant == positiveSum)
+		{
+			forPositive = 1;
+			forNegative = 0;
+		}
+		else
+		{
+			forPositive = 0;
+			forNegative = 1;
+		}
+		for(var i = 0; i < row.Length - 1; i++)
+		{
+			if(row[i] != 0)
+			{
+				var newConstant = row[i] > 0 ? forPositive : forNegative;
+				yield return new RowSeparationResult(i, newConstant);
+			}
+		}
+		//splitsMade = true;
+	}
+}*/
