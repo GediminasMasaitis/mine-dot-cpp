@@ -40,8 +40,10 @@ namespace minedotcpp
 
 			int give_up_from_size = 31;
 
-			bool valid_combination_search_open_cl = false;
-			int valid_combination_search_open_cl_use_from_size = 16;
+			bool valid_combination_search_open_cl = true;
+			bool valid_combination_search_open_cl_allow_loop_break = true;
+			int valid_combination_search_open_cl_use_from_size = 18;
+			int valid_combination_search_open_cl_max_batch_size = 20;
 			int valid_combination_search_open_cl_platform_id = 0;
 			int valid_combination_search_open_cl_device_id = 0;
 

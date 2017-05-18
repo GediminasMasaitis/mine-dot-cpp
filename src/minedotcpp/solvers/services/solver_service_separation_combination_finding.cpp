@@ -35,18 +35,20 @@ void solver_service_separation_combination_finding::cl_build_find_combination_pr
 //#pragma OPENCL EXTENSION cl_khr_local_int32_base_atomics : enable
 //#pragma OPENCL EXTENSION cl_khr_global_int32_base_atomics : enable
 
-__kernel void FindCombination(__constant unsigned char* map, __global int* results, __global int* increment)
+__kernel void FindCombination(__constant unsigned char* map, __global int* results, __global int* increment, unsigned int offset)
 {
-	size_t prediction = get_global_id(0);
+	size_t prediction = offset + get_global_id(0);
 
 	unsigned char prediction_valid = 1;
 	unsigned char empty_pts_count = map[0];
 	for(int i = 0; i < empty_pts_count; i++)
 	{
+#ifndef ALLOW_LOOP_BREAK
 		if(!prediction_valid)
 		{
 			continue;
 		}
+#endif
 		int neighbours_with_mine = 0;
 		int header_offset = 1 + i * 9;
 		unsigned char header = map[header_offset];
@@ -79,6 +81,9 @@ __kernel void FindCombination(__constant unsigned char* map, __global int* resul
 		if(neighbours_with_mine != hint)
 		{
 			prediction_valid = 0;
+#ifdef ALLOW_LOOP_BREAK
+			break;
+#endif
 		}
 	}
 	
@@ -93,7 +98,12 @@ __kernel void FindCombination(__constant unsigned char* map, __global int* resul
 	auto sources = cl::Program::Sources(1, std::make_pair(cl_code.c_str(), cl_code.length() + 1));
 	cl_context = cl::Context(device);
 	cl_find_combination_program = cl::Program(cl_context, sources);
-	auto err = cl_find_combination_program.build("-cl-std=CL1.2");
+	string build_args = "-cl-std=CL1.2";
+	if(settings.valid_combination_search_open_cl_allow_loop_break)
+	{
+		build_args += " -D ALLOW_LOOP_BREAK";
+	}
+	auto err = cl_find_combination_program.build(build_args.c_str());
 	auto context2 = cl_find_combination_program.getInfo<CL_PROGRAM_CONTEXT>(&err);
 	auto devices2 = context2.getInfo<CL_CONTEXT_DEVICES>(&err);
 }
@@ -117,7 +127,25 @@ void solver_service_separation_combination_finding::cl_validate_predictions(vect
 
 	auto queue = cl::CommandQueue(cl_context, device);
 
-	auto run_err = queue.enqueueNDRangeKernel(kernel, cl::NullRange, cl::NDRange(total), cl::NullRange/*cl::NDRange(1)*/);
+	auto batch_load = static_cast<unsigned int>(1 << settings.valid_combination_search_open_cl_max_batch_size);
+	auto batch_count = total / batch_load;
+	if(batch_load * batch_count != total)
+	{
+		++batch_count;
+		batch_load = total / batch_count;
+	}
+	
+	for(auto i = 0; i < batch_count; i++)
+	{
+		unsigned int offset = batch_load * i;
+		if (i == batch_count - 1)
+		{
+			batch_load = total - offset;
+		}
+
+		err = kernel.setArg(3, offset);
+		auto run_err = queue.enqueueNDRangeKernel(kernel, cl::NullRange, cl::NDRange(batch_load), cl::NullRange/*cl::NDRange(1)*/);
+	}
 	auto read_err = queue.enqueueReadBuffer(results_buf, CL_TRUE, 0, sizeof(int) * results.size(), results.data());
 
 	cl::finish();

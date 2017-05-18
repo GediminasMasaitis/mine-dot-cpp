@@ -143,7 +143,7 @@ public:
 
 void solver_service_gaussian::reduce_matrix(vector<vector<int>>& matrix, vector<point>& coordinates, point_map<bool>& allVerdicts, const matrix_reduction_parameters& parameters) const
 {
-	if(matrix.size() == 0)
+	/*if(matrix.size() == 0)
 	{
 		return;
 	}
@@ -374,7 +374,7 @@ void solver_service_gaussian::reduce_matrix(vector<vector<int>>& matrix, vector<
 			}
 			rowList[i] = new_row;
 		}
-	}
+	}*/
 	
 	/*matrix = rowList.Where(x = > Array.FindIndex(x, y = > y != 0) != -1).OrderBy(x = > Array.FindIndex(x, y = > y != 0)).ToList();
 	coordinates = coordinates.Where((x, i) = > !columnsToRemove.Contains(i)).ToList();
