@@ -218,31 +218,26 @@ int solver_service_separation_combination_finding::find_hamming_weight(int i) co
 
 void solver_service_separation_combination_finding::get_combination_search_map(solver_map& original_map, border& border, vector<unsigned char>& m) const
 {
-	point_set empty_pts_set;
+	google::dense_hash_set<int> empty_pts_set;
+	empty_pts_set.set_empty_key(-1);
+	empty_pts_set.set_deleted_key(-2);
 	auto cell_indices = vector<int>(original_map.cells.size(), -1);
-	for(auto i = 0; i < border.cells.size(); i++)
+	for (auto i = 0; i < border.cells.size(); i++)
 	{
 		auto& c = border.cells[i];
 		cell_indices[c.pt.x * original_map.height + c.pt.y] = i;
 		auto& entry = original_map.neighbour_cache_get(c.pt).by_state[cell_state_empty];
-		for(auto& cell : entry)
+		for (auto& cell : entry)
 		{
-			empty_pts_set.insert(cell.pt);
+			empty_pts_set.insert(cell.pt.x * original_map.height + cell.pt.y);
 		}
 	}
 
-	auto empty_pts = vector<int>();
-	for(auto& pt : empty_pts_set)
-	{
-		empty_pts.push_back(pt.x * original_map.height + pt.y);
-	}
-	
-	auto empty_pt_count = static_cast<unsigned char>(empty_pts.size());
+	auto empty_pt_count = static_cast<unsigned char>(empty_pts_set.size());
 	m.reserve(1 + empty_pt_count * 9);
 	m.push_back(empty_pt_count);
-	for(auto i = 0; i < empty_pts.size(); i++)
+	for (auto& empty_pt : empty_pts_set)
 	{
-		auto& empty_pt = empty_pts[i];
 		auto& c = original_map.cells[empty_pt];
 		auto& entry = original_map.neighbour_cache_get(c.pt);
 		auto& filled_neighbours = entry.by_state[cell_state_filled];
@@ -250,9 +245,9 @@ void solver_service_separation_combination_finding::get_combination_search_map(s
 		auto header_byte = static_cast<unsigned char>((c.hint << 4) | filled_neighbours.size());
 		m.push_back(header_byte);
 
-		for(auto j = 0; j < 8; j++)
+		for (auto j = 0; j < 8; j++)
 		{
-			if(j < filled_neighbours.size())
+			if (j < filled_neighbours.size())
 			{
 				auto& neighbour = filled_neighbours[j];
 				auto& cell_index = cell_indices[neighbour.pt.x * original_map.height + neighbour.pt.y];
