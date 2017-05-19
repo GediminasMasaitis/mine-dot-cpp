@@ -5,6 +5,7 @@
 #include "solver_service_base.h"
 #include <mutex>
 #ifdef ENABLE_OPEN_CL
+#define CL_USE_DEPRECATED_OPENCL_1_2_APIS
 #include <CL/cl.hpp>
 #endif
 
