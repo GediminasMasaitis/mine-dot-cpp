@@ -35,13 +35,12 @@ void solver_service_separation_combination_finding::cl_build_find_combination_pr
 //#pragma OPENCL EXTENSION cl_khr_local_int32_base_atomics : enable
 //#pragma OPENCL EXTENSION cl_khr_global_int32_base_atomics : enable
 
-__kernel void FindCombination(__constant unsigned char* map, __global int* results, __global int* increment, unsigned int offset)
+__kernel void FindCombination(const unsigned char map_size, __constant unsigned char* map, __global int* results, __global int* increment, const unsigned int offset)
 {
-	size_t prediction = offset + get_global_id(0);
+	const size_t prediction = offset + get_global_id(0);
 
 	unsigned char prediction_valid = 1;
-	unsigned char empty_pts_count = map[0];
-	for(int i = 0; i < empty_pts_count; i++)
+	for(int i = 0; i < map_size; i++)
 	{
 #ifndef ALLOW_LOOP_BREAK
 		if(!prediction_valid)
@@ -50,7 +49,7 @@ __kernel void FindCombination(__constant unsigned char* map, __global int* resul
 		}
 #endif
 		int neighbours_with_mine = 0;
-		int header_offset = 1 + i * 9;
+		int header_offset = i * 9;
 		unsigned char header = map[header_offset];
 		int neighbour_count = header & 0x0F;
 		int hint = header >> 4;
@@ -108,7 +107,7 @@ __kernel void FindCombination(__constant unsigned char* map, __global int* resul
 	auto devices2 = context2.getInfo<CL_CONTEXT_DEVICES>(&err);
 }
 
-void solver_service_separation_combination_finding::cl_validate_predictions(vector<unsigned char>& map, vector<int>& results, unsigned int total) const
+void solver_service_separation_combination_finding::cl_validate_predictions(unsigned char map_size, vector<unsigned char>& map, vector<int>& results, unsigned int total) const
 {
 	cl_int err;
 	auto devices = cl_context.getInfo<CL_CONTEXT_DEVICES>(&err);
@@ -121,9 +120,10 @@ void solver_service_separation_combination_finding::cl_validate_predictions(vect
 
 	auto kernel = cl::Kernel(cl_find_combination_program, "FindCombination");
 
-	err = kernel.setArg(0, map_buf);
-	err = kernel.setArg(1, results_buf);
-	err = kernel.setArg(2, inc_buf);
+	err = kernel.setArg(0, map_size);
+	err = kernel.setArg(1, map_buf);
+	err = kernel.setArg(2, results_buf);
+	err = kernel.setArg(3, inc_buf);
 
 	auto queue = cl::CommandQueue(cl_context, device);
 
@@ -143,7 +143,7 @@ void solver_service_separation_combination_finding::cl_validate_predictions(vect
 			batch_load = total - offset;
 		}
 
-		err = kernel.setArg(3, offset);
+		err = kernel.setArg(4, offset);
 		auto run_err = queue.enqueueNDRangeKernel(kernel, cl::NullRange, cl::NDRange(batch_load), cl::NullRange/*cl::NDRange(1)*/);
 	}
 	auto read_err = queue.enqueueReadBuffer(results_buf, CL_TRUE, 0, sizeof(int) * results.size(), results.data());
@@ -151,7 +151,7 @@ void solver_service_separation_combination_finding::cl_validate_predictions(vect
 	cl::finish();
 }
 #endif
-void solver_service_separation_combination_finding::validate_predictions(vector<unsigned char>& m, vector<int>& results, unsigned int min, unsigned int max, mutex* sync) const
+void solver_service_separation_combination_finding::validate_predictions(unsigned char map_size, vector<unsigned char>& m, vector<int>& results, unsigned int min, unsigned int max, mutex* sync) const
 {
 	for(unsigned int prediction = min; prediction < max; prediction++)
 	{
@@ -210,7 +210,7 @@ void solver_service_separation_combination_finding::validate_predictions(vector<
 	}
 }
 
-void solver_service_separation_combination_finding::thr_validate_predictions(vector<unsigned char>& m, vector<int>& results, unsigned int total) const
+void solver_service_separation_combination_finding::thr_validate_predictions(unsigned char map_size, vector<unsigned char>& m, vector<int>& results, unsigned int total) const
 {
 	auto thread_count = thread::hardware_concurrency();
 	auto thread_load = total / thread_count;
@@ -225,9 +225,9 @@ void solver_service_separation_combination_finding::thr_validate_predictions(vec
 			max = total;
 		}
 
-		threads.emplace_back([this, &m, &results, min, max, &sync]()
+		threads.emplace_back([this, map_size, &m, &results, min, max, &sync]()
 		{
-			validate_predictions(m, results, min, max, &sync);
+			validate_predictions(map_size, m, results, min, max, &sync);
 		});
 	}
 
@@ -244,30 +244,30 @@ int solver_service_separation_combination_finding::find_hamming_weight(int i) co
 	return (((i + (i >> 4)) & 0x0F0F0F0F) * 0x01010101) >> 24;
 }
 
-void solver_service_separation_combination_finding::get_combination_search_map(solver_map& original_map, border& border, vector<unsigned char>& m) const
+void solver_service_separation_combination_finding::get_combination_search_map(solver_map& solver_map, border& border, vector<unsigned char>& m, unsigned char& map_size) const
 {
 	google::dense_hash_set<int> empty_pts_set;
 	empty_pts_set.set_empty_key(-1);
 	empty_pts_set.set_deleted_key(-2);
-	auto cell_indices = vector<int>(original_map.cells.size(), -1);
+	auto cell_indices = vector<int>(solver_map.cells.size(), -1);
 	for (auto i = 0; i < border.cells.size(); i++)
 	{
 		auto& c = border.cells[i];
-		cell_indices[c.pt.x * original_map.height + c.pt.y] = i;
-		auto& entry = original_map.neighbour_cache_get(c.pt).by_state[cell_state_empty];
+		cell_indices[c.pt.x * solver_map.height + c.pt.y] = i;
+		auto& entry = solver_map.neighbour_cache_get(c.pt).by_state[cell_state_empty];
 		for (auto& cell : entry)
 		{
-			empty_pts_set.insert(cell.pt.x * original_map.height + cell.pt.y);
+			empty_pts_set.insert(cell.pt.x * solver_map.height + cell.pt.y);
 		}
 	}
 
-	auto empty_pt_count = static_cast<unsigned char>(empty_pts_set.size());
-	m.reserve(1 + empty_pt_count * 9);
-	m.push_back(empty_pt_count);
+	map_size = static_cast<unsigned char>(empty_pts_set.size());
+	m.reserve(map_size * 9);
+	//m.push_back(empty_pt_count);
 	for (auto& empty_pt : empty_pts_set)
 	{
-		auto& c = original_map.cells[empty_pt];
-		auto& entry = original_map.neighbour_cache_get(c.pt);
+		auto& c = solver_map.cells[empty_pt];
+		auto& entry = solver_map.neighbour_cache_get(c.pt);
 		auto& filled_neighbours = entry.by_state[cell_state_filled];
 
 		auto header_byte = static_cast<unsigned char>((c.hint << 4) | filled_neighbours.size());
@@ -278,7 +278,7 @@ void solver_service_separation_combination_finding::get_combination_search_map(s
 			if (j < filled_neighbours.size())
 			{
 				auto& neighbour = filled_neighbours[j];
-				auto& cell_index = cell_indices[neighbour.pt.x * original_map.height + neighbour.pt.y];
+				auto& cell_index = cell_indices[neighbour.pt.x * solver_map.height + neighbour.pt.y];
 				auto neighbour_byte = static_cast<unsigned char>(cell_index << 2);
 				auto flag = neighbour.state & cell_flags;
 				neighbour_byte |= flag >> 2;
@@ -298,7 +298,8 @@ void solver_service_separation_combination_finding::find_valid_border_cell_combi
 	auto total = static_cast<unsigned int>(1 << border_length);
 	auto m = vector<unsigned char>();
 	auto results = vector<int>();
-	get_combination_search_map(solver_map, border, m);
+	unsigned char map_size;
+	get_combination_search_map(solver_map, border, m, map_size);
 	auto all_remaining_cells_in_border = solver_map.undecided_count == border_length;
 	cout << "Border size: " << border_length << endl;
 	cout << "All remaining mines in border" << endl;
@@ -306,17 +307,17 @@ void solver_service_separation_combination_finding::find_valid_border_cell_combi
 	if(settings.valid_combination_search_open_cl && border_length >= settings.valid_combination_search_open_cl_use_from_size)
 	{
 		results.resize(1024 * 2, -1);
-		cl_validate_predictions(m, results, total);
+		cl_validate_predictions(map_size, m, results, total);
 	}
 	else
 #endif
 	if(settings.valid_combination_search_multithread && border_length >= settings.valid_combination_search_multithread_use_from_size)
 	{
-		thr_validate_predictions(m, results, total);
+		thr_validate_predictions(map_size, m, results, total);
 	}
 	else
 	{
-		validate_predictions(m, results, 0, total, nullptr);
+		validate_predictions(map_size, m, results, 0, total, nullptr);
 	}
 
 	for(auto& prediction : results)
