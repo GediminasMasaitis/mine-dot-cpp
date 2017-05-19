@@ -35,9 +35,9 @@ void solver_service_separation_combination_finding::cl_build_find_combination_pr
 //#pragma OPENCL EXTENSION cl_khr_local_int32_base_atomics : enable
 //#pragma OPENCL EXTENSION cl_khr_global_int32_base_atomics : enable
 
-__kernel void FindCombination(const unsigned char map_size, const __constant unsigned char* map, __global int* results, __global int* increment, const unsigned int offset)
+__kernel void FindCombination(const unsigned char map_size, const __constant unsigned char* map, __global unsigned int* results, __global int* increment, const unsigned int offset)
 {
-	const size_t prediction = offset + get_global_id(0);
+	const unsigned int prediction = offset + get_global_id(0);
 
 	unsigned char prediction_valid = 1;
 	for(unsigned char i = 0; i < map_size; i++)
@@ -105,23 +105,24 @@ __kernel void FindCombination(const unsigned char map_size, const __constant uns
 	auto devices2 = context2.getInfo<CL_CONTEXT_DEVICES>(&err);
 }
 
-void solver_service_separation_combination_finding::cl_validate_predictions(unsigned char map_size, vector<unsigned char>& map, vector<int>& results, unsigned int total) const
+void solver_service_separation_combination_finding::cl_validate_predictions(unsigned char map_size, vector<unsigned char>& map, vector<unsigned int>& results, unsigned int total) const
 {
+	results.resize(1024 * 2, -1);
 	cl_int err;
 	auto devices = cl_context.getInfo<CL_CONTEXT_DEVICES>(&err);
 	auto device = devices[0];
 
-	auto offs = 0;
+	int result_count = 0;
 	auto map_buf = cl::Buffer(cl_context, CL_MEM_READ_ONLY | CL_MEM_HOST_NO_ACCESS | CL_MEM_COPY_HOST_PTR, map.size(), map.data(), &err);
 	auto results_buf = cl::Buffer(cl_context, CL_MEM_WRITE_ONLY | CL_MEM_HOST_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(int) * results.size(), results.data(), &err);
-	auto inc_buf = cl::Buffer(cl_context, CL_MEM_READ_WRITE | CL_MEM_HOST_NO_ACCESS | CL_MEM_COPY_HOST_PTR, sizeof(int), &offs, &err);
+	auto count_buf = cl::Buffer(cl_context, CL_MEM_READ_WRITE | CL_MEM_HOST_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(int), &result_count, &err);
 
 	auto kernel = cl::Kernel(cl_find_combination_program, "FindCombination");
 
 	err = kernel.setArg(0, map_size);
 	err = kernel.setArg(1, map_buf);
 	err = kernel.setArg(2, results_buf);
-	err = kernel.setArg(3, inc_buf);
+	err = kernel.setArg(3, count_buf);
 
 	auto queue = cl::CommandQueue(cl_context, device);
 
@@ -144,12 +145,14 @@ void solver_service_separation_combination_finding::cl_validate_predictions(unsi
 		err = kernel.setArg(4, offset);
 		auto run_err = queue.enqueueNDRangeKernel(kernel, cl::NullRange, cl::NDRange(batch_load), cl::NullRange/*cl::NDRange(1)*/);
 	}
+	auto read_count_err = queue.enqueueReadBuffer(count_buf, CL_TRUE, 0, sizeof(int), &result_count);
+	results.resize(result_count);
 	auto read_err = queue.enqueueReadBuffer(results_buf, CL_TRUE, 0, sizeof(int) * results.size(), results.data());
 
 	cl::finish();
 }
 #endif
-void solver_service_separation_combination_finding::validate_predictions(const unsigned char map_size, vector<unsigned char>& m, vector<int>& results, const unsigned int min, const unsigned int max, mutex* sync) const
+void solver_service_separation_combination_finding::validate_predictions(const unsigned char map_size, vector<unsigned char>& m, vector<unsigned int>& results, const unsigned int min, const unsigned int max, mutex* sync) const
 {
 	for (unsigned int prediction = min; prediction < max; prediction++)
 	{
@@ -205,7 +208,7 @@ void solver_service_separation_combination_finding::validate_predictions(const u
 	}
 }
 
-void solver_service_separation_combination_finding::thr_validate_predictions(unsigned char map_size, vector<unsigned char>& m, vector<int>& results, unsigned int total) const
+void solver_service_separation_combination_finding::thr_validate_predictions(unsigned char map_size, vector<unsigned char>& m, vector<unsigned int>& results, unsigned int total) const
 {
 	auto thread_count = thread::hardware_concurrency();
 	auto thread_load = total / thread_count;
@@ -292,7 +295,7 @@ void solver_service_separation_combination_finding::find_valid_border_cell_combi
 	auto border_length = border.cells.size();
 	auto total = static_cast<unsigned int>(1 << border_length);
 	auto m = vector<unsigned char>();
-	auto results = vector<int>();
+	auto results = vector<unsigned int>();
 	unsigned char map_size;
 	get_combination_search_map(solver_map, border, m, map_size);
 	auto all_remaining_cells_in_border = solver_map.undecided_count == border_length;
@@ -301,7 +304,6 @@ void solver_service_separation_combination_finding::find_valid_border_cell_combi
 #ifdef ENABLE_OPEN_CL
 	if (settings.valid_combination_search_open_cl && border_length >= settings.valid_combination_search_open_cl_use_from_size)
 	{
-		results.resize(1024 * 2, -1);
 		cl_validate_predictions(map_size, m, results, total);
 	}
 	else
@@ -317,10 +319,6 @@ void solver_service_separation_combination_finding::find_valid_border_cell_combi
 
 	for (auto& prediction : results)
 	{
-		if (prediction == -1)
-		{
-			break;
-		}
 		if (solver_map.remaining_mine_count > 0)
 		{
 			auto bits_set = find_hamming_weight(prediction);
