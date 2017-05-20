@@ -34,6 +34,10 @@ void solver_service_separation::solve_separation(solver_map& m, point_map<double
 		{
 			probabilities[probability.first] = probability.second;
 		}
+		if(should_stop_solving(verdicts, settings.separation_single_border_stop_on_any_verdict, settings.separation_single_border_stop_on_any_verdict, settings.separation_single_border_stop_always))
+		{
+			return;
+		}
 	}
 
 	if (settings.mine_count_solve)
@@ -72,8 +76,6 @@ void solver_service_separation::solve_border(solver_map& m, border& b, bool allo
 	}
 
 	combination_service.find_valid_border_cell_combinations(m, b);
-
-	dump_predictions(b.valid_combinations);
 
 	if (b.valid_combinations.size() == 0)
 	{

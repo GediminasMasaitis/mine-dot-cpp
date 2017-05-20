@@ -20,6 +20,9 @@ namespace minedotcpp
 			bool gaussian_stop_always = false;
 
 			bool separation_solve = true;
+			bool separation_single_border_stop_on_no_mine_verdict = true;
+			bool separation_single_border_stop_on_any_verdict = false;
+			bool separation_single_border_stop_always = false;
 
 			bool partial_solve = false;
 			bool partial_single_stop_on_no_mine_verdict = false;
