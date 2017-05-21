@@ -8,6 +8,7 @@
 #include <chrono>
 #include "debug/debugging.h"
 #include "benchmarking/benchmarker.h"
+#include "global_wrappers.h"
 #ifdef _WIN32
 #include <windows.h>
 #endif
@@ -119,8 +120,10 @@ int main(int argc, char* argv[])
 	GetWindowRect(wh, &rect);
 	MoveWindow(wh, rect.left, 50, 1300, 950, TRUE);
 #endif
-
-	solve_from_file(argc, argv);
+	solver_settings s;
+	s.give_up_from_size = 15;
+	init_solver(s);
+	//solve_from_file(argc, argv);
 	//benchmark();
 	
 	cout << "Press any key to continue" << endl;

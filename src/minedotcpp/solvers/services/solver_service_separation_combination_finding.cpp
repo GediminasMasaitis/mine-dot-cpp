@@ -299,8 +299,8 @@ void solver_service_separation_combination_finding::find_valid_border_cell_combi
 	unsigned char map_size;
 	get_combination_search_map(solver_map, border, m, map_size);
 	auto all_remaining_cells_in_border = solver_map.undecided_count == border_length;
-	cout << "Border size: " << border_length << endl;
-	cout << "All remaining mines in border" << endl;
+	//cout << "Border size: " << border_length << endl;
+	//cout << "All remaining mines in border" << endl;
 #ifdef ENABLE_OPEN_CL
 	if (settings.valid_combination_search_open_cl && border_length >= settings.valid_combination_search_open_cl_use_from_size)
 	{
