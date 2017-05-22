@@ -88,6 +88,7 @@ void benchmark()
 	auto benchmarker = minedotcpp::benchmarking::benchmarker(mt);
 	benchmarker.on_iteration = on_iteration_impl;
 	auto settings = solver_settings();
+	settings.guess_if_no_no_mine_verdict = true;
 	auto solvr = solver(settings);
 	auto group = minedotcpp::benchmarking::benchmark_density_group();
 	auto count = 500;
@@ -109,6 +110,26 @@ void benchmark()
 	cout << "Success rate: " << success_rate << "%" << endl;
 }
 
+void test_global_api()
+{
+	solver_settings s;
+	//s.give_up_from_size = 15;
+	s.separation_solve = false;
+	cout << sizeof(solver_result) << endl;
+	init_solver(s);
+	auto map_str = R"(###2###1
+########
+##3211##
+##1..2##
+##1..2##
+2#2113##
+########
+###2###2)";
+	auto size = 1024;
+	auto buf = vector<solver_result>(size);
+	solve(map_str, buf.data(), &size);
+}
+
 int main(int argc, char* argv[])
 {
 #ifdef _WIN32
@@ -120,12 +141,10 @@ int main(int argc, char* argv[])
 	GetWindowRect(wh, &rect);
 	MoveWindow(wh, rect.left, 50, 1300, 950, TRUE);
 #endif
-	solver_settings s;
-	s.give_up_from_size = 15;
-	init_solver(s);
+
 	//solve_from_file(argc, argv);
-	//benchmark();
-	
+	benchmark();
+	//test_global_api();
 	cout << "Press any key to continue" << endl;
 	getc(stdin);
 	return 0;

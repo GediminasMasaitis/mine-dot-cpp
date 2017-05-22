@@ -6,9 +6,9 @@ namespace minedotcpp
 	{
 		enum solver_verdict
 		{
-			verdict_none,
-			verdict_has_mine,
-			verdict_doesnt_have_mine
+			verdict_none = 0,
+			verdict_has_mine = 1,
+			verdict_doesnt_have_mine = 2
 		};
 	}
 }

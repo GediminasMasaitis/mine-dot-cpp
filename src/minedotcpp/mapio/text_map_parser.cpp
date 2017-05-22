@@ -7,6 +7,11 @@ using namespace std;
 using namespace minedotcpp::common;
 using namespace minedotcpp::mapio;
 
+void text_map_parser::parse(char* str, map& target_map) const
+{
+	istringstream iss(str);
+	parse(iss, target_map);
+}
 
 void text_map_parser::parse(string str, map& target_map) const
 {

@@ -17,8 +17,6 @@ namespace minedotcpp
 		class MINE_API solver : private services::solver_service_base
 		{
 		public:
-			solver_settings settings;
-
 			explicit solver(solver_settings& settings) : solver_service_base(settings), separation_service(settings)
 			{
 			}
