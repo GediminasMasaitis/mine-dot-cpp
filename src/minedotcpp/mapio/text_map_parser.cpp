@@ -19,6 +19,12 @@ void text_map_parser::parse(string str, map& target_map) const
 	parse(iss, target_map);
 }
 
+void remove_chars_from_string(string &str, char* charsToRemove) {
+	for(unsigned int i = 0; i < strlen(charsToRemove); ++i) {
+		str.erase(remove(str.begin(), str.end(), charsToRemove[i]), str.end());
+	}
+}
+
 void text_map_parser::parse(istream& is, map& m) const
 {
 	int remaining_mine_count = -1;
@@ -27,11 +33,13 @@ void text_map_parser::parse(istream& is, map& m) const
 	unsigned char a = is.get();
 	unsigned char b = is.get();
 	unsigned char c = is.get();
-	if (a != static_cast<unsigned char>(0xEF) || b != static_cast<unsigned char>(0xBB) || c != static_cast<unsigned char>(0xBF)) {
+	if (a != static_cast<unsigned char>(0xEF) || b != static_cast<unsigned char>(0xBB) || c != static_cast<unsigned char>(0xBF))
+	{
 		is.seekg(0);
 	}
 	for (string line; getline(is, line);)
 	{
+		remove_chars_from_string(line, "\r");
 		auto line_len = static_cast<unsigned int>(line.length());
 		if(line_len == 0)
 		{

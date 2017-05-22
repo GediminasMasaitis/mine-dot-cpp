@@ -61,11 +61,22 @@ void solve_from_file(int argc, char* argv[])
 	}
 
 	solver_settings settings;
-	solver s(settings);
+	settings.trivial_solve = false;
+	settings.gaussian_solve = false;
+	settings.partial_solve = false;
+	settings.mine_count_ignore_completely = true;
+	settings.guess_if_no_no_mine_verdict = false;
+	settings.give_up_from_size = 25;
+	init_solver(settings);
+	//solver s(settings);
 	std::chrono::high_resolution_clock clock;
-	auto results = point_map<solver_result>();
+	auto results = vector<solver_result>(1024);
+	auto results_size = static_cast<int>(results.size());
+	auto visualizer = minedotcpp::mapio::text_map_visualizer();
+	auto str = visualizer.visualize_to_string(test_map);
 	auto start_time = clock.now();
-	s.solve(test_map, results);
+	solve(str.c_str(), results.data(), &results_size);
+	results.resize(results_size);
 	auto end_time = clock.now();
 	auto diff = end_time - start_time;
 

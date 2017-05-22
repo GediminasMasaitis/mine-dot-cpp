@@ -21,7 +21,24 @@ void solver_service_separation::solve_separation(solver_map& m, point_map<double
 	vector<border> borders;
 
 	find_common_border(m, common_border);
+	//visualize(m, { common_border }, false);
 	separate_borders(m, common_border, original_borders);
+
+	if(settings.separation_order_borders_by_size)
+	{
+		std::sort(original_borders.begin(), original_borders.end(), [](const border& lhs, const border& rhs)
+		{
+			return lhs.cells.size() < rhs.cells.size();
+		});
+	}
+	else if(settings.separation_order_borders_by_size_descending)
+	{
+		std::sort(original_borders.begin(), original_borders.end(), [](const border& lhs, const border& rhs)
+		{
+			return lhs.cells.size() > rhs.cells.size();
+		});
+	}
+
 
 	for (auto& b : original_borders)
 	{
@@ -34,7 +51,7 @@ void solver_service_separation::solve_separation(solver_map& m, point_map<double
 		{
 			probabilities[probability.first] = probability.second;
 		}
-		if(should_stop_solving(verdicts, settings.separation_single_border_stop_on_any_verdict, settings.separation_single_border_stop_on_any_verdict, settings.separation_single_border_stop_always))
+		if(should_stop_solving(verdicts, settings.separation_single_border_stop_on_no_mine_verdict, settings.separation_single_border_stop_on_any_verdict, settings.separation_single_border_stop_always))
 		{
 			return;
 		}
@@ -76,6 +93,7 @@ void solver_service_separation::solve_border(solver_map& m, border& b, bool allo
 	}
 
 	combination_service.find_valid_border_cell_combinations(m, b);
+	//dump_predictions(b.valid_combinations);
 
 	if (b.valid_combinations.size() == 0)
 	{

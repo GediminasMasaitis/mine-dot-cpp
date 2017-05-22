@@ -73,6 +73,20 @@ static void dump_results(minedotcpp::common::point_map<minedotcpp::solvers::solv
 	std::cout << std::endl;
 }
 
+static void dump_results(std::vector<minedotcpp::solvers::solver_result>& results)
+{
+	if(results.size() == 0)
+	{
+		std::cout << "No results" << std::endl;
+		return;
+	}
+	for(auto& result : results)
+	{
+		std::cout << "[" << result.pt.x << ";" << result.pt.y << "] " << result.probability * 100 << "%" << std::endl;
+	}
+	std::cout << std::endl;
+}
+
 static void dump_predictions(std::vector<minedotcpp::common::point_map<bool>>& predictions)
 {
 	for(auto& prediction : predictions)
@@ -196,4 +210,22 @@ static void visualize(minedotcpp::common::map& m, minedotcpp::common::point_map<
 		}
 	}
 	visualize(m, {pts_safe, pts_mine}, external);
+}
+
+static void visualize(minedotcpp::common::map& m, std::vector<minedotcpp::solvers::solver_result> results, bool external)
+{
+	std::vector<minedotcpp::common::point> pts_safe;
+	std::vector<minedotcpp::common::point> pts_mine;
+	for(auto& result : results)
+	{
+		if(result.verdict == minedotcpp::solvers::verdict_has_mine)
+		{
+			pts_mine.push_back(result.pt);
+		}
+		else if(result.verdict == minedotcpp::solvers::verdict_doesnt_have_mine)
+		{
+			pts_safe.push_back(result.pt);
+		}
+	}
+	visualize(m, { pts_safe, pts_mine }, external);
 }
