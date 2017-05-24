@@ -63,10 +63,10 @@ void solve_from_file(int argc, char* argv[])
 	solver_settings settings;
 	settings.trivial_solve = false;
 	settings.gaussian_solve = false;
-	settings.partial_solve = false;
-	settings.mine_count_ignore_completely = true;
-	settings.guess_if_no_no_mine_verdict = false;
-	settings.give_up_from_size = 25;
+	settings.partial_solve = true;
+	//settings.mine_count_ignore_completely = true;
+	//settings.guess_if_no_no_mine_verdict = false;
+	//settings.give_up_from_size = 25;
 	init_solver(settings);
 	//solver s(settings);
 	std::chrono::high_resolution_clock clock;
@@ -99,10 +99,12 @@ void benchmark()
 	auto benchmarker = minedotcpp::benchmarking::benchmarker(mt);
 	benchmarker.on_iteration = on_iteration_impl;
 	auto settings = solver_settings();
+	settings.separation_single_border_stop_on_no_mine_verdict = false;
+	settings.valid_combination_search_open_cl_platform_id = 0;
 	settings.guess_if_no_no_mine_verdict = true;
 	auto solvr = solver(settings);
 	auto group = minedotcpp::benchmarking::benchmark_density_group();
-	auto count = 500;
+	auto count = 100;
 	benchmarker.benchmark_multiple(solvr, 16,16, 56, count, group);
 	cout << "Density: " << group.density << endl;
 	auto sum = 0;
@@ -124,8 +126,8 @@ void benchmark()
 void test_global_api()
 {
 	solver_settings s;
+	s.gaussian_solve = false;
 	//s.give_up_from_size = 15;
-	s.separation_solve = false;
 	cout << sizeof(solver_result) << endl;
 	init_solver(s);
 	auto map_str = R"(###2###1
@@ -136,9 +138,21 @@ void test_global_api()
 2#2113##
 ########
 ###2###2)";
-	auto size = 1024;
-	auto buf = vector<solver_result>(size);
-	solve(map_str, buf.data(), &size);
+	auto results_size = 1024;
+	auto results = vector<solver_result>(results_size);
+	solve(map_str, results.data(), &results_size);
+	results.resize(results_size);
+	dump_results(results);
+
+	map m;
+	minedotcpp::mapio::text_map_parser().parse(map_str, m);
+	visualize(m, results, false);
+
+}
+
+void pattern_search_test()
+{
+	//auto pt = point{ 4 , 6 };
 }
 
 int main(int argc, char* argv[])
@@ -152,9 +166,9 @@ int main(int argc, char* argv[])
 	GetWindowRect(wh, &rect);
 	MoveWindow(wh, rect.left, 50, 1300, 950, TRUE);
 #endif
-
-	//solve_from_file(argc, argv);
-	benchmark();
+	//pattern_search_test();
+	solve_from_file(argc, argv);
+	//benchmark();
 	//test_global_api();
 	cout << "Press any key to continue" << endl;
 	getc(stdin);

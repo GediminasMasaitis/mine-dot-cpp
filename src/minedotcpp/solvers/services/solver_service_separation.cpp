@@ -7,6 +7,7 @@
 #include <queue>
 #include "solver_service_separation_mine_counts.h"
 #include "solver_service_separation_combination_finding.h"
+#include "../../common/common_functions.h"
 
 using namespace minedotcpp;
 using namespace solvers;
@@ -21,6 +22,90 @@ void solver_service_separation::solve_separation(solver_map& m, point_map<double
 	vector<border> borders;
 
 	find_common_border(m, common_border);
+
+	{
+		auto border_pts = point_set();
+		auto target_pt = point{ 1,3 };
+		auto sequence = vector<cell>();
+		auto all_flagged_coordinates = point_set();
+		for (auto& cell : m.cells)
+		{
+			if (cell.state == (cell_state_filled | cell_flag_has_mine) || cell.state == (cell_state_filled | cell_flag_doesnt_have_mine))
+			{
+				all_flagged_coordinates.insert(cell.pt);
+			}
+		}
+		for (auto& c : common_border.cells)
+		{
+			border_pts.insert(c.pt);
+		}
+		breadth_search_border(m, border_pts, target_pt, sequence);
+		auto cells = vector<cell>();
+		auto prev_cells = 0;
+		for(auto i = 0; i < sequence.size(); i++)
+		{
+			auto& c = sequence[i];
+			cells.push_back(c);
+			visualize(m, { cells }, false);
+			/*auto partial_map = solver_map();
+			auto partial_border = border();
+			partial_border.cells = cells;
+			calculate_partial_map_and_trim_partial_border(partial_border, partial_map, m, all_flagged_coordinates);
+			if(prev_cells == partial_border.cells.size())
+			{
+				continue;
+			}
+			prev_cells = partial_border.cells.size();
+			partial_map.calculate_additional_data();
+			auto bs = vector<border>();
+			solve_border(partial_map, partial_border, false, bs);
+			visualize(partial_map, { partial_border }, false);
+			dump_verdicts(partial_border.verdicts);
+			if(partial_border.verdicts.find(target_pt) != partial_border.verdicts.end())
+			{
+				break;
+			}*/
+			
+		}
+		return;
+		auto cells_changed = true;
+		
+		while(cells_changed)
+		{
+			cells_changed = false;
+			for(auto i = 1; i < cells.size(); i++)
+			{
+				auto& c = cells[i];
+				auto try_cells = cells;
+				vector_erase_index_safe(try_cells, i);
+				auto partial_map = solver_map();
+				auto partial_border = border();
+				partial_border.cells = try_cells;
+				calculate_partial_map_and_trim_partial_border(partial_border, partial_map, m, all_flagged_coordinates);
+				try_cells = partial_border.cells;
+				if(partial_border.cells.size() == 0)
+				{
+					continue;
+				}
+				partial_map.calculate_additional_data();
+				auto bs = vector<border>();
+				solve_border(partial_map, partial_border, false, bs);
+				if (partial_border.verdicts.find(target_pt) != partial_border.verdicts.end())
+				{
+					cells = try_cells;
+					cells_changed = true;
+					break;
+				}
+			}
+		}
+
+		auto final_border = border();
+		final_border.cells = cells;
+		auto final_map = solver_map();
+		calculate_partial_map_and_trim_partial_border(final_border, final_map, m, all_flagged_coordinates);
+		visualize(final_map, { final_border }, false);
+	}
+
 	//visualize(m, { common_border }, false);
 	separate_borders(m, common_border, original_borders);
 
@@ -223,7 +308,7 @@ void solver_service_separation::try_solve_border_by_partial_borders(solver_map& 
 	}
 }
 
-void calculate_partial_map_and_trim_partial_border(border& partial_border, solver_map& partial_map, solver_map& parent_map, point_set& all_flagged_coordinates)
+void solver_service_separation::calculate_partial_map_and_trim_partial_border(border& partial_border, solver_map& partial_map, solver_map& parent_map, point_set& all_flagged_coordinates) const
 {
 	point_set border_coordinate_set;
 	point_set allSurroundingEmpty;
@@ -315,11 +400,11 @@ void solver_service_separation::get_partial_border(border& border, solver_map& m
 	vector<cell> partial_border_sequence;
 	vector<cell> partial_border_cells;
 	point_set border_pts;
-	point_set all_flagged_coordinates;
 	for (auto& cell : border.cells)
 	{
 		border_pts.insert(cell.pt);
 	}
+	point_set all_flagged_coordinates;
 	for (auto& cell : map.cells)
 	{
 		if (cell.state == (cell_state_filled | cell_flag_has_mine) || cell.state == (cell_state_filled | cell_flag_doesnt_have_mine))
@@ -461,11 +546,11 @@ void solver_service_separation::breadth_search_border(solver_map& m, point_set& 
 		auto& coord = coord_queue.front();
 		coord_queue.pop();
 		auto& cell = m[coord];
-		if (common_coords.find(coord) != common_coords.end())
+		/*if (common_coords.find(coord) != common_coords.end())
 		{
 			common_coords.erase(coord);
 			target_cells.push_back(cell);
-		}
+		}*/
 		visited.insert(coord);
 		auto unflagged_neighbours = m.neighbour_cache_get(coord).by_flag[cell_flag_none];
 		auto cell_state = cell.state & cell_states;
@@ -478,6 +563,35 @@ void solver_service_separation::breadth_search_border(solver_map& m, point_set& 
 				{
 					visited.insert(x.pt);
 					coord_queue.push(x.pt);
+				}
+			}
+		}
+	}
+	coord_queue.push(target_coordinate);
+	point_set visited2;
+	while (coord_queue.size() > 0)
+	{
+		auto& coord = coord_queue.front();
+		coord_queue.pop();
+		auto& cell = m[coord];
+		if (common_coords.find(coord) != common_coords.end())
+		{
+			common_coords.erase(coord);
+			
+		}
+		visited2.insert(coord);
+		auto unflagged_neighbours = m.neighbour_cache_get(coord).by_flag[cell_flag_none];
+		auto cell_state = cell.state & cell_states;
+		for (auto& x : unflagged_neighbours)
+		{
+			auto state = x.state & cell_states;
+			if (visited.find(x.pt) != visited.end())
+			{
+				if (visited2.find(x.pt) == visited2.end())
+				{
+					visited2.insert(x.pt);
+					coord_queue.push(x.pt);
+					target_cells.push_back(cell);
 				}
 			}
 		}

@@ -178,6 +178,21 @@ static void visualize(minedotcpp::common::map& m, std::vector<std::vector<minedo
 	}
 }
 
+static void visualize(minedotcpp::common::map& m, std::vector<std::vector<minedotcpp::common::cell>> regions, bool external)
+{
+	auto pt_regions = std::vector<std::vector<minedotcpp::common::point>>();
+	for (auto& r : regions)
+	{
+		auto points = std::vector<minedotcpp::common::point>();
+		for (auto& c : r)
+		{
+			points.push_back(c.pt);
+		}
+		pt_regions.push_back(points);
+	}
+	visualize(m, pt_regions, external);
+}
+
 static void visualize(minedotcpp::common::map& m, std::vector<minedotcpp::solvers::border> borders, bool external)
 {
 	std::vector<std::vector<minedotcpp::common::point>> pts;
