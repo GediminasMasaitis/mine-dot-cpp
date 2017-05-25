@@ -15,11 +15,9 @@ using namespace services;
 using namespace common;
 using namespace std;
 
-void solver_service_separation::solve_separation(solver_map& m, point_map<double>& probabilities, point_map<bool>& verdicts) const
+void solver_service_separation::get_pattern(solver_map& m) const
 {
 	border common_border;
-	vector<border> original_borders;
-	vector<border> borders;
 
 	find_common_border(m, common_border);
 
@@ -28,14 +26,14 @@ void solver_service_separation::solve_separation(solver_map& m, point_map<double
 		auto target_pt = point{ 1,3 };
 		auto sequence = vector<cell>();
 		auto all_flagged_coordinates = point_set();
-		for (auto& cell : m.cells)
+		for(auto& cell : m.cells)
 		{
-			if (cell.state == (cell_state_filled | cell_flag_has_mine) || cell.state == (cell_state_filled | cell_flag_doesnt_have_mine))
+			if(cell.state == (cell_state_filled | cell_flag_has_mine) || cell.state == (cell_state_filled | cell_flag_doesnt_have_mine))
 			{
 				all_flagged_coordinates.insert(cell.pt);
 			}
 		}
-		for (auto& c : common_border.cells)
+		for(auto& c : common_border.cells)
 		{
 			border_pts.insert(c.pt);
 		}
@@ -46,8 +44,7 @@ void solver_service_separation::solve_separation(solver_map& m, point_map<double
 		{
 			auto& c = sequence[i];
 			cells.push_back(c);
-			visualize(m, { cells }, false);
-			/*auto partial_map = solver_map();
+			auto partial_map = solver_map();
 			auto partial_border = border();
 			partial_border.cells = cells;
 			calculate_partial_map_and_trim_partial_border(partial_border, partial_map, m, all_flagged_coordinates);
@@ -64,12 +61,11 @@ void solver_service_separation::solve_separation(solver_map& m, point_map<double
 			if(partial_border.verdicts.find(target_pt) != partial_border.verdicts.end())
 			{
 				break;
-			}*/
-			
+			}
+
 		}
-		return;
 		auto cells_changed = true;
-		
+
 		while(cells_changed)
 		{
 			cells_changed = false;
@@ -90,7 +86,7 @@ void solver_service_separation::solve_separation(solver_map& m, point_map<double
 				partial_map.calculate_additional_data();
 				auto bs = vector<border>();
 				solve_border(partial_map, partial_border, false, bs);
-				if (partial_border.verdicts.find(target_pt) != partial_border.verdicts.end())
+				if(partial_border.verdicts.find(target_pt) != partial_border.verdicts.end())
 				{
 					cells = try_cells;
 					cells_changed = true;
@@ -105,8 +101,15 @@ void solver_service_separation::solve_separation(solver_map& m, point_map<double
 		calculate_partial_map_and_trim_partial_border(final_border, final_map, m, all_flagged_coordinates);
 		visualize(final_map, { final_border }, false);
 	}
+}
 
-	//visualize(m, { common_border }, false);
+void solver_service_separation::solve_separation(solver_map& m, point_map<double>& probabilities, point_map<bool>& verdicts) const
+{
+	border common_border;
+	vector<border> original_borders;
+	vector<border> borders;
+
+	find_common_border(m, common_border);
 	separate_borders(m, common_border, original_borders);
 
 	if(settings.separation_order_borders_by_size)
@@ -546,13 +549,13 @@ void solver_service_separation::breadth_search_border(solver_map& m, point_set& 
 		auto& coord = coord_queue.front();
 		coord_queue.pop();
 		auto& cell = m[coord];
-		/*if (common_coords.find(coord) != common_coords.end())
+		if (common_coords.find(coord) != common_coords.end())
 		{
 			common_coords.erase(coord);
 			target_cells.push_back(cell);
-		}*/
+		}
 		visited.insert(coord);
-		auto unflagged_neighbours = m.neighbour_cache_get(coord).by_flag[cell_flag_none];
+		auto& unflagged_neighbours = m.neighbour_cache_get(coord).by_flag[cell_flag_none];
 		auto cell_state = cell.state & cell_states;
 		for (auto& x : unflagged_neighbours)
 		{
@@ -567,35 +570,36 @@ void solver_service_separation::breadth_search_border(solver_map& m, point_set& 
 			}
 		}
 	}
-	coord_queue.push(target_coordinate);
+	/*coord_queue.push(target_coordinate);
+	target_cells.push_back(m[target_coordinate]);
 	point_set visited2;
+	visited2.insert(target_coordinate);
 	while (coord_queue.size() > 0)
 	{
-		auto& coord = coord_queue.front();
+		auto coord = coord_queue.front();
 		coord_queue.pop();
 		auto& cell = m[coord];
-		if (common_coords.find(coord) != common_coords.end())
-		{
-			common_coords.erase(coord);
-			
-		}
-		visited2.insert(coord);
-		auto unflagged_neighbours = m.neighbour_cache_get(coord).by_flag[cell_flag_none];
 		auto cell_state = cell.state & cell_states;
+		auto& unflagged_neighbours = m.neighbour_cache_get(coord).by_flag[cell_flag_none];
 		for (auto& x : unflagged_neighbours)
 		{
 			auto state = x.state & cell_states;
-			if (visited.find(x.pt) != visited.end())
+			auto& pt = x.pt;
+			if ((cell_state == cell_state_filled || (cell_state == cell_state_empty && state == cell_state_filled)) && visited.find(pt) != visited.end())
 			{
-				if (visited2.find(x.pt) == visited2.end())
+				if (visited2.find(pt) == visited2.end())
 				{
-					visited2.insert(x.pt);
-					coord_queue.push(x.pt);
-					target_cells.push_back(cell);
+					visited2.insert(pt);
+					coord_queue.push(pt);
+					if(common_coords.find(pt) != common_coords.end())
+					{
+						common_coords.erase(pt);
+						target_cells.push_back(m[pt]);
+					}
 				}
 			}
 		}
-	}
+	}*/
 }
 
 int solver_service_separation::separate_borders(solver_map& m, border& common_border, vector<border>& target_borders) const
