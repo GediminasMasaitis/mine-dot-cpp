@@ -37,7 +37,7 @@ void solver_service_separation::get_pattern(solver_map& m) const
 		{
 			border_pts.insert(c.pt);
 		}
-		breadth_search_border(m, border_pts, target_pt, sequence);
+		breadth_search_border(m, border_pts, target_pt, sequence, true);
 		auto cells = vector<cell>();
 		auto prev_cells = 0;
 		for(auto i = 0; i < sequence.size(); i++)
@@ -415,7 +415,7 @@ void solver_service_separation::get_partial_border(border& border, solver_map& m
 			all_flagged_coordinates.insert(cell.pt);
 		}
 	}
-	breadth_search_border(map, border_pts, target_pt, partial_border_sequence);
+	breadth_search_border(map, border_pts, target_pt, partial_border_sequence, false);
 	auto found = false;
 	for (auto cell : partial_border_sequence)
 	{
@@ -537,7 +537,7 @@ void solver_service_separation::calculate_border_probabilities(border& b) const
 	}
 }
 
-void solver_service_separation::breadth_search_border(solver_map& m, point_set& allowed_coordinates, point target_coordinate, vector<cell>& target_cells) const
+void solver_service_separation::breadth_search_border(solver_map& m, point_set& allowed_coordinates, point target_coordinate, vector<cell>& target_cells, const bool smooth_order) const
 {
 	point_set common_coords(allowed_coordinates);
 	queue<point> coord_queue;
@@ -549,7 +549,7 @@ void solver_service_separation::breadth_search_border(solver_map& m, point_set& 
 		auto& coord = coord_queue.front();
 		coord_queue.pop();
 		auto& cell = m[coord];
-		if (common_coords.find(coord) != common_coords.end())
+		if (!smooth_order && common_coords.find(coord) != common_coords.end())
 		{
 			common_coords.erase(coord);
 			target_cells.push_back(cell);
@@ -570,10 +570,14 @@ void solver_service_separation::breadth_search_border(solver_map& m, point_set& 
 			}
 		}
 	}
-	/*coord_queue.push(target_coordinate);
+	if(!smooth_order)
+	{
+		return;
+	}
+	coord_queue.push(target_coordinate);
 	target_cells.push_back(m[target_coordinate]);
-	point_set visited2;
-	visited2.insert(target_coordinate);
+	point_set visited_smoothing;
+	visited_smoothing.insert(target_coordinate);
 	while (coord_queue.size() > 0)
 	{
 		auto coord = coord_queue.front();
@@ -587,9 +591,9 @@ void solver_service_separation::breadth_search_border(solver_map& m, point_set& 
 			auto& pt = x.pt;
 			if ((cell_state == cell_state_filled || (cell_state == cell_state_empty && state == cell_state_filled)) && visited.find(pt) != visited.end())
 			{
-				if (visited2.find(pt) == visited2.end())
+				if (visited_smoothing.find(pt) == visited_smoothing.end())
 				{
-					visited2.insert(pt);
+					visited_smoothing.insert(pt);
 					coord_queue.push(pt);
 					if(common_coords.find(pt) != common_coords.end())
 					{
@@ -599,7 +603,7 @@ void solver_service_separation::breadth_search_border(solver_map& m, point_set& 
 				}
 			}
 		}
-	}*/
+	}
 }
 
 int solver_service_separation::separate_borders(solver_map& m, border& common_border, vector<border>& target_borders) const
@@ -617,7 +621,7 @@ int solver_service_separation::separate_borders(solver_map& m, border& common_bo
 		auto& initial_point = *common_coords.begin();
 		target_borders.resize(++index);
 		auto& brd = target_borders[index - 1];
-		breadth_search_border(m, common_coords, initial_point, brd.cells);
+		breadth_search_border(m, common_coords, initial_point, brd.cells, false);
 		for (auto& c : brd.cells)
 		{
 			common_coords.erase(c.pt);

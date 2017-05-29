@@ -36,7 +36,7 @@ namespace minedotcpp
 				void reseparate_border(solver_map& m, border& parent_border, std::vector<border>& borders, bool solve) const;
 				
 				void calculate_border_probabilities(border& b) const;
-				void breadth_search_border(solver_map& m, common::point_set& allowed_coordinates, common::point target_coordinate, std::vector<common::cell>& target_cells) const;
+				void breadth_search_border(solver_map& m, common::point_set& allowed_coordinates, common::point target_coordinate, std::vector<common::cell>& target_cells, const bool smooth_order) const;
 				int separate_borders(solver_map& m, border& common_border, std::vector<border>& target_borders) const;
 				bool is_cell_border(solver_map& m, common::cell& c) const;
 				void find_common_border(solver_map& m, border& common_border) const;
