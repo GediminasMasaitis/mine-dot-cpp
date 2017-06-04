@@ -35,7 +35,7 @@ void solver_service_separation_combination_finding::cl_build_find_combination_pr
 //#pragma OPENCL EXTENSION cl_khr_local_int32_base_atomics : enable
 //#pragma OPENCL EXTENSION cl_khr_global_int32_base_atomics : enable
 
-__kernel void FindCombination(const unsigned char map_size, const __constant unsigned char* map, __global unsigned int* results, __global int* increment, const unsigned int offset)
+__kernel void find_combination(const unsigned char map_size, const __constant unsigned char* map, __global unsigned int* results, __global int* increment, const unsigned int offset)
 {
 	const unsigned int prediction = offset + get_global_id(0);
 
@@ -109,21 +109,21 @@ void solver_service_separation_combination_finding::cl_validate_predictions(unsi
 {
 	results.resize(1024 * 2, -1);
 	cl_int err;
-	auto devices = cl_context.getInfo<CL_CONTEXT_DEVICES>(&err);
-	auto device = devices[0];
 
 	int result_count = 0;
 	auto map_buf = cl::Buffer(cl_context, CL_MEM_READ_ONLY | CL_MEM_HOST_NO_ACCESS | CL_MEM_COPY_HOST_PTR, map.size(), map.data(), &err);
 	auto results_buf = cl::Buffer(cl_context, CL_MEM_WRITE_ONLY | CL_MEM_HOST_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(int) * results.size(), results.data(), &err);
 	auto count_buf = cl::Buffer(cl_context, CL_MEM_READ_WRITE | CL_MEM_HOST_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(int), &result_count, &err);
 
-	auto kernel = cl::Kernel(cl_find_combination_program, "FindCombination");
+	auto kernel = cl::Kernel(cl_find_combination_program, "find_combination");
 
 	err = kernel.setArg(0, map_size);
 	err = kernel.setArg(1, map_buf);
 	err = kernel.setArg(2, results_buf);
 	err = kernel.setArg(3, count_buf);
 
+	auto devices = cl_context.getInfo<CL_CONTEXT_DEVICES>(&err);
+	auto device = devices[0];
 	auto queue = cl::CommandQueue(cl_context, device);
 
 	auto batch_load = static_cast<unsigned int>(1 << settings.valid_combination_search_open_cl_max_batch_size);
@@ -149,7 +149,7 @@ void solver_service_separation_combination_finding::cl_validate_predictions(unsi
 	results.resize(result_count);
 	auto read_err = queue.enqueueReadBuffer(results_buf, CL_TRUE, 0, sizeof(int) * results.size(), results.data());
 
-	cl::finish();
+	//cl::finish();
 }
 #endif
 void solver_service_separation_combination_finding::validate_predictions(const unsigned char map_size, vector<unsigned char>& m, vector<unsigned int>& results, const unsigned int min, const unsigned int max, mutex* sync) const
