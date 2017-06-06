@@ -18,6 +18,7 @@ using namespace std;
 #ifdef ENABLE_OPEN_CL
 void solver_service_separation_combination_finding::cl_build_find_combination_program()
 {
+	
 	if (!settings.valid_combination_search_open_cl)
 	{
 		return;
@@ -235,6 +236,35 @@ void solver_service_separation_combination_finding::thr_validate_predictions(uns
 	}
 }
 
+void solver_service_separation_combination_finding::thr_pool_validate_predictions(unsigned char map_size, vector<unsigned char>& m, vector<unsigned int>& results, unsigned int total) const
+{
+	auto thread_count = thread::hardware_concurrency();
+	//thread_pool pool(thread_count);
+	//ctpl::thread_pool pool(thread_count);
+	auto futures = vector<future<void>>();
+	auto thread_load = total / thread_count;
+	mutex sync;
+	for (unsigned i = 0; i < thread_count; i++)
+	{
+		unsigned int min = thread_load * i;
+		unsigned int max = min + thread_load;
+		if (i == thread_count - 1)
+		{
+			max = total;
+		}
+
+		futures.emplace_back(thr_pool->push([this, map_size, &m, &results, min, max, &sync](int id)
+		{
+			validate_predictions(map_size, m, results, min, max, &sync);
+		}));
+	}
+
+	for(auto& future : futures)
+	{
+		future.get();
+	}
+}
+
 int solver_service_separation_combination_finding::find_hamming_weight(int i) const
 {
 	i = i - ((i >> 1) & 0x55555555);
@@ -310,7 +340,7 @@ void solver_service_separation_combination_finding::find_valid_border_cell_combi
 #endif
 		if (settings.valid_combination_search_multithread && border_length >= settings.valid_combination_search_multithread_use_from_size)
 		{
-			thr_validate_predictions(map_size, m, results, total);
+			thr_pool_validate_predictions(map_size, m, results, total);
 		}
 		else
 		{

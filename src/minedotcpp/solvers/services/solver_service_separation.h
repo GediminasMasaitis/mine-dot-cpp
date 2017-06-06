@@ -18,7 +18,9 @@ namespace minedotcpp
 			class solver_service_separation : private solver_service_base
 			{
 			public:
-				explicit solver_service_separation(const solver_settings& settings)	: solver_service_base(settings), combination_service(settings)
+				explicit solver_service_separation(const solver_settings& settings, ctpl::thread_pool* thr_pool)
+					: solver_service_base(settings, thr_pool)
+					, combination_service(settings, thr_pool)
 				{
 				}
 
@@ -27,7 +29,6 @@ namespace minedotcpp
 
 			private:
 				solver_service_separation_combination_finding combination_service;
-
 				void solve_border(solver_map& m, border& b, bool allow_partial_border_solving, std::vector<border>& borders) const;
 				void calculate_min_max_mine_counts(border& b) const;
 				void try_solve_border_by_partial_borders(solver_map& map, border& border) const;

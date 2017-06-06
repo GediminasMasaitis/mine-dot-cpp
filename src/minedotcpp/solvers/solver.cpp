@@ -1,6 +1,5 @@
 #include "solver.h"
 #include "solver_map.h"
-#include <thread>
 #include "services/solver_service_trivial.h"
 #include "services/solver_service_separation.h"
 #include "services/solver_service_guessing.h"
@@ -27,7 +26,7 @@ void solver::solve(const map& base_map, point_map<solver_result>& results) const
 
 	if(settings.trivial_solve)
 	{
-		auto trivial_service = solver_service_trivial(settings);
+		auto trivial_service = solver_service_trivial(settings, thr_pool);
 		trivial_service.solve_trivial(m, verdicts);
 		if(should_stop_solving(verdicts, settings.trivial_stop_on_no_mine_verdict, settings.trivial_stop_on_any_verdict, settings.trivial_stop_always))
 		{
@@ -38,7 +37,7 @@ void solver::solve(const map& base_map, point_map<solver_result>& results) const
 
 	if(settings.gaussian_solve)
 	{
-		auto gaussian_service = solver_service_gaussian(settings);
+		auto gaussian_service = solver_service_gaussian(settings, thr_pool);
 		gaussian_service.solve_gaussian(m, verdicts);
 		if(should_stop_solving(verdicts, settings.gaussian_stop_on_no_mine_verdict, settings.gaussian_stop_on_any_verdict, settings.gaussian_stop_always))
 		{
@@ -57,7 +56,7 @@ void solver::solve(const map& base_map, point_map<solver_result>& results) const
 
 void solver::get_final_results(solver_map& m, point_map<double>& probabilities, point_map<bool>& verdicts, point_map<solver_result>& results) const
 {
-	auto guessing_service = solver_service_guessing(settings);
+	auto guessing_service = solver_service_guessing(settings, thr_pool);
 	point guessed_pt;
 	auto guessed = guessing_service.guess_verdict(m, probabilities, verdicts, guessed_pt);
 	for (auto& probability : probabilities)

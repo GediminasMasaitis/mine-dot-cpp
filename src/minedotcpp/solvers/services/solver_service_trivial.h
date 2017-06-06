@@ -12,7 +12,8 @@ namespace minedotcpp
 			class solver_service_trivial : private solver_service_base
 			{
 			public:
-				explicit solver_service_trivial(const solver_settings& settings) : solver_service_base(settings)
+				explicit solver_service_trivial(const solver_settings& settings, ctpl::thread_pool* thr_pool)
+					: solver_service_base(settings, thr_pool)
 				{
 				}
 

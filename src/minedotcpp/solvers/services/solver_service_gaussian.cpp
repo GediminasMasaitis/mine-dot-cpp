@@ -33,18 +33,28 @@ solve_gaussian(solver_map& m, point_map<bool>& verdicts) const
 	}
 	auto matrix = vector<vector<int>>();
 	get_matrix_from_map(m, points, true, matrix);
+	std::mutex sync;
+	auto futures = vector<future<void>>();
 	for(auto& p : parameters)
 	{
-		auto local_matrix = matrix;
-		auto local_points = points;
-		auto round_verdicts = point_map<bool>();
-		reduce_matrix(local_matrix, local_points, round_verdicts, p);
-
-		
-		for(auto& verdict : round_verdicts)
+		futures.emplace_back(thr_pool->push([this, &matrix, &points, &verdicts, &sync, &p](int thr_num)
 		{
-			verdicts[verdict.first] = verdict.second;
-		}
+			auto local_matrix = matrix;
+			auto local_points = points;
+			auto round_verdicts = point_map<bool>();
+			reduce_matrix(local_matrix, local_points, round_verdicts, p);
+
+			lock_guard<mutex> guard(sync);
+			for(auto& verdict : round_verdicts)
+			{
+				verdicts[verdict.first] = verdict.second;
+			}
+		}));
+	}
+
+	for(auto& future : futures)
+	{
+		future.get();
 	}
 }
 

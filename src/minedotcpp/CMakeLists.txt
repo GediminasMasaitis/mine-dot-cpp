@@ -11,6 +11,8 @@ endif()
 set_property(TARGET minedotcpp PROPERTY CXX_STANDARD 11)
 add_definitions(-DMINE_EXPORTS)
 
+include_directories(${CMAKE_SOURCE_DIR}/external/ctpl)
+
 if(USE_SPARSEHASH)
 	include_directories(${CMAKE_SOURCE_DIR}/external/sparsehash)
 endif()

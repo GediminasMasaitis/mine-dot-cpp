@@ -15,6 +15,7 @@ if(USE_OPENCL)
 	include_directories(${OpenCL_INCLUDE_DIR})
 endif()
 include_directories(${CMAKE_SOURCE_DIR}/src/minedotcpp)
+include_directories(${CMAKE_SOURCE_DIR}/external/ctpl)
 include_directories(${CMAKE_SOURCE_DIR}/external/sparsehash)
 target_link_libraries(minedotcpp_testcli minedotcpp)
 

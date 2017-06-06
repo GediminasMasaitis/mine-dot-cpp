@@ -147,7 +147,7 @@ void solver_service_separation::solve_separation(solver_map& m, point_map<double
 
 	if (settings.mine_count_solve)
 	{
-		auto mine_count_srvc = solver_service_separation_mine_counts(settings);
+		auto mine_count_srvc = solver_service_separation_mine_counts(settings, thr_pool);
 		mine_count_srvc.solve_mine_counts(m, common_border, borders, probabilities, verdicts);
 	}
 }
