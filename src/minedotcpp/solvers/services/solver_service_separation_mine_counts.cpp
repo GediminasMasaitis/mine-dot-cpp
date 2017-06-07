@@ -291,7 +291,7 @@ void solver_service_separation_mine_counts::get_variable_mine_count_borders_prob
 	if (total_combos > settings.variable_mine_count_borders_probabilities_multithread_use_from && thread_count > 1)
 	{
 		auto thread_load = total_combos / thread_count;
-		vector<thread> threads;
+		vector<future<void>> futures;
 		for (unsigned i = 0; i < thread_count; i++)
 		{
 			unsigned int min = thread_load * i;
@@ -300,15 +300,15 @@ void solver_service_separation_mine_counts::get_variable_mine_count_borders_prob
 			{
 				max = total_combos;
 			}
-			threads.emplace_back([this, min, max, mines_remaining, mines_elsewhere, non_border_cell_count, total_combination_length, undecided_cells_remaining, non_mine_count_elsewhere, &variable_borders, &ratios, &non_border_mine_counts, &counts, &common_lock, &count_locks]()
+			futures.emplace_back(thr_pool->push([this, min, max, mines_remaining, mines_elsewhere, non_border_cell_count, total_combination_length, undecided_cells_remaining, non_mine_count_elsewhere, &variable_borders, &ratios, &non_border_mine_counts, &counts, &common_lock, &count_locks](int thr_num)
 			{
 				thr_mine_counts(variable_borders, min, max, mines_remaining, mines_elsewhere, non_border_cell_count, total_combination_length, undecided_cells_remaining, non_mine_count_elsewhere, ratios, non_border_mine_counts, counts, common_lock, count_locks);
-			});
+			}));
 		}
 
-		for (auto& thr : threads)
+		for (auto& future : futures)
 		{
-			thr.join();
+			future.get();
 		}
 	}
 	else

@@ -47,15 +47,15 @@ namespace minedotcpp
 
 			bool valid_combination_search_open_cl = true;
 			bool valid_combination_search_open_cl_allow_loop_break = true;
-			int valid_combination_search_open_cl_use_from_size = 17;
+			int valid_combination_search_open_cl_use_from_size = 16;
 			int valid_combination_search_open_cl_max_batch_size = 20;
 			int valid_combination_search_open_cl_platform_id = 1;
 			int valid_combination_search_open_cl_device_id = 0;
 
 			bool valid_combination_search_multithread = true;
-			int valid_combination_search_multithread_use_from_size = 22; //2097152
+			int valid_combination_search_multithread_use_from_size = 6;
 
-			int variable_mine_count_borders_probabilities_multithread_use_from = 65536;
+			int variable_mine_count_borders_probabilities_multithread_use_from = 32;
 
 			bool guess_if_no_no_mine_verdict = true;
 			bool guess_if_no_verdict = false;
