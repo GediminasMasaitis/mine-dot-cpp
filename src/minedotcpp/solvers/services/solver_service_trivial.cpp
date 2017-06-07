@@ -4,13 +4,13 @@ using namespace minedotcpp;
 using namespace solvers;
 using namespace services;
 using namespace common;
+using namespace std;
 
 void solver_service_trivial::solve_trivial(solver_map& m, point_map<bool>& verdicts) const
 {
+	point_map<bool> current_round_verdicts;
 	while (true)
 	{
-		point_map<bool> current_round_verdicts;
-
 		for (auto& cell : m.cells)
 		{
 			if (cell.state != cell_state_empty)
@@ -51,5 +51,6 @@ void solver_service_trivial::solve_trivial(solver_map& m, point_map<bool>& verdi
 			return;
 		}
 		m.set_cells_by_verdicts(current_round_verdicts);
+		current_round_verdicts.clear();
 	}
 }
