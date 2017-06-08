@@ -14,14 +14,33 @@ solve_gaussian(solver_map& m, point_map<bool>& verdicts) const
 {
 	auto parameters = vector<matrix_reduction_parameters>
 	{
-		matrix_reduction_parameters(true, false, false,false, false),
-		matrix_reduction_parameters(false, true, false, true, true),
-		matrix_reduction_parameters(false, true, true, true, true),
+		// everything everything = 34.3
+		matrix_reduction_parameters(true, false, false,false, false), // 0.4
+		//matrix_reduction_parameters(false, true, false, true, true), // 20.8
+
+		matrix_reduction_parameters(false, false, false, false, false),
+		matrix_reduction_parameters(false, false, false, false, true),
+		matrix_reduction_parameters(false, false, false, true, false),
 		matrix_reduction_parameters(false, false, false, true, true),
-		matrix_reduction_parameters(false, false, true, true, true),
+		matrix_reduction_parameters(false, false, true, false, false),
 		matrix_reduction_parameters(false, false, true, false, true),
+		matrix_reduction_parameters(false, false, true, true, false),
+		matrix_reduction_parameters(false, false, true, true, true),
+		matrix_reduction_parameters(false, true, false, false, false),
+		matrix_reduction_parameters(false, true, false, false, true),
 		matrix_reduction_parameters(false, true, false, true, false),
-		matrix_reduction_parameters(false, true, true, true, false)
+		matrix_reduction_parameters(false, true, false, true, true),
+		matrix_reduction_parameters(false, true, true, false, false),
+		matrix_reduction_parameters(false, true, true, false, true),
+		matrix_reduction_parameters(false, true, true, true, false),
+		matrix_reduction_parameters(false, true, true, true, true),
+
+		//matrix_reduction_parameters(false, true, true, true, true), // 11.7
+		//matrix_reduction_parameters(false, false, false, true, true), // 9.9
+		//matrix_reduction_parameters(false, false, true, true, true), // 16.2
+		//matrix_reduction_parameters(false, false, true, false, true), // 16.1
+		//matrix_reduction_parameters(false, true, false, true, false), // 5.5
+		//matrix_reduction_parameters(false, true, true, true, false) // 12.3
 	};
 	auto points = vector<point>();
 	for(auto&c : m.cells)
@@ -255,11 +274,19 @@ void solver_service_gaussian::reduce_matrix(vector<vector<int>>& matrix, vector<
 		non_zero_indices.push_back(non_zero_index);
 	}
 
-	std::sort(matrix.begin(), matrix.end(), [](const vector<int>& lhs, const vector<int>& rhs)
+	/*std::sort(matrix.begin(), matrix.end(), [](const vector<int>& lhs, const vector<int>& rhs)
 	{
 		auto index_lhs = static_cast<int>(std::find_if(lhs.begin(), lhs.end(), [](const int& i) {return i != 0; }) - lhs.begin());
 		auto index_rhs = static_cast<int>(std::find_if(rhs.begin(), rhs.end(), [](const int& i) {return i != 0; }) - rhs.begin());
 		return index_lhs < index_rhs;
+	});*/
+
+	vector_sort_by<vector<int>, int>(matrix, [](const vector<int>& row)
+	{
+		return static_cast<int>(std::find_if(row.begin(), row.end(), [](const int& i) {return i != 0; }) - row.begin());
+	}, [](const int& lhs, const int& rhs)
+	{
+		return lhs < rhs;
 	});
 
 	if(matrix.size() == 0)
@@ -468,11 +495,18 @@ void solver_service_gaussian::reduce_matrix(vector<vector<int>>& matrix, vector<
 		}
 		matrix.push_back(row);
 	}
-	std::sort(matrix.begin(), matrix.end(), [](const vector<int>& lhs, const vector<int>& rhs)
+	/*std::sort(matrix.begin(), matrix.end(), [](const vector<int>& lhs, const vector<int>& rhs)
 	{
 		auto index_lhs = static_cast<int>(std::find_if(lhs.begin(), lhs.end(), [](const int& i) {return i != 0; }) - lhs.begin());
 		auto index_rhs = static_cast<int>(std::find_if(rhs.begin(), rhs.end(), [](const int& i) {return i != 0; }) - rhs.begin());
 		return index_lhs < index_rhs;
+	});*/
+	vector_sort_by<vector<int>, int>(matrix, [](const vector<int>& row)
+	{
+		return static_cast<int>(std::find_if(row.begin(), row.end(), [](const int& i) {return i != 0; }) - row.begin());
+	}, [](const int& lhs, const int& rhs)
+	{
+		return lhs < rhs;
 	});
 	for(auto i = 0; i < coordinates.size(); i++)
 	{
