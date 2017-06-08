@@ -322,7 +322,7 @@ void solver_service_separation::calculate_partial_map_and_trim_partial_border(bo
 		auto& empty_cells = parent_map.neighbour_cache_get(c.pt).by_state[cell_state_empty];
 		for (auto& empty_c : empty_cells)
 		{
-			allSurroundingEmpty.insert(empty_c.pt);
+			allSurroundingEmpty.insert(empty_c->pt);
 		}
 	}
 
@@ -334,7 +334,7 @@ void solver_service_separation::calculate_partial_map_and_trim_partial_border(bo
 		auto all = true;
 		for (auto& neighbour : filled_enoighbours)
 		{
-			if (border_coordinate_set.find(neighbour.pt) == border_coordinate_set.end() && all_flagged_coordinates.find(neighbour.pt) == all_flagged_coordinates.end())
+			if (border_coordinate_set.find(neighbour->pt) == border_coordinate_set.end() && all_flagged_coordinates.find(neighbour->pt) == all_flagged_coordinates.end())
 			{
 				//only_influencing_border.push_back(parent_map.cell_get(empty_pt));
 				all = false;
@@ -353,7 +353,7 @@ void solver_service_separation::calculate_partial_map_and_trim_partial_border(bo
 		auto& empty_cells = parent_map.neighbour_cache_get(c.pt).by_state[cell_state_empty];
 		for (auto& empty_c : empty_cells)
 		{
-			if (only_influencing_border_set.find(empty_c.pt) != only_influencing_border_set.end())
+			if (only_influencing_border_set.find(empty_c->pt) != only_influencing_border_set.end())
 			{
 				new_non_border_cells.push_back(c);
 				break;
@@ -559,13 +559,13 @@ void solver_service_separation::breadth_search_border(solver_map& m, point_set& 
 		auto cell_state = cell.state & cell_states;
 		for (auto& x : unflagged_neighbours)
 		{
-			auto state = x.state & cell_states;
+			auto state = x->state & cell_states;
 			if ((cell_state == cell_state_filled && state == cell_state_empty) || (cell_state == cell_state_empty && state == cell_state_filled))
 			{
-				if (visited.find(x.pt) == visited.end())
+				if (visited.find(x->pt) == visited.end())
 				{
-					visited.insert(x.pt);
-					coord_queue.push(x.pt);
+					visited.insert(x->pt);
+					coord_queue.push(x->pt);
 				}
 			}
 		}
@@ -587,8 +587,8 @@ void solver_service_separation::breadth_search_border(solver_map& m, point_set& 
 		auto& unflagged_neighbours = m.neighbour_cache_get(coord).by_flag[cell_flag_none];
 		for (auto& x : unflagged_neighbours)
 		{
-			auto state = x.state & cell_states;
-			auto& pt = x.pt;
+			auto state = x->state & cell_states;
+			auto& pt = x->pt;
 			if ((cell_state == cell_state_filled || (cell_state == cell_state_empty && state == cell_state_filled)) && visited.find(pt) != visited.end())
 			{
 				if (visited_smoothing.find(pt) == visited_smoothing.end())

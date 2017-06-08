@@ -14,10 +14,16 @@ solve_gaussian(solver_map& m, point_map<bool>& verdicts) const
 {
 	auto parameters = vector<matrix_reduction_parameters>
 	{
-		// everything everything = 34.3
-		matrix_reduction_parameters(true, false, false,false, false), // 0.4
+		//matrix_reduction_parameters(true, false, false,false, false), // 0.4
 		//matrix_reduction_parameters(false, true, false, true, true), // 20.8
+		//matrix_reduction_parameters(false, true, true, true, true), // 11.7
+		//matrix_reduction_parameters(false, false, false, true, true), // 9.9
+		//matrix_reduction_parameters(false, false, true, true, true), // 16.2
+		//matrix_reduction_parameters(false, false, true, false, true), // 16.1
+		//matrix_reduction_parameters(false, true, false, true, false), // 5.5
+		//matrix_reduction_parameters(false, true, true, true, false) // 12.3
 
+		// everything everything = 34.3
 		matrix_reduction_parameters(false, false, false, false, false),
 		matrix_reduction_parameters(false, false, false, false, true),
 		matrix_reduction_parameters(false, false, false, true, false),
@@ -34,13 +40,6 @@ solve_gaussian(solver_map& m, point_map<bool>& verdicts) const
 		matrix_reduction_parameters(false, true, true, false, true),
 		matrix_reduction_parameters(false, true, true, true, false),
 		matrix_reduction_parameters(false, true, true, true, true),
-
-		//matrix_reduction_parameters(false, true, true, true, true), // 11.7
-		//matrix_reduction_parameters(false, false, false, true, true), // 9.9
-		//matrix_reduction_parameters(false, false, true, true, true), // 16.2
-		//matrix_reduction_parameters(false, false, true, false, true), // 16.1
-		//matrix_reduction_parameters(false, true, false, true, false), // 5.5
-		//matrix_reduction_parameters(false, true, true, true, false) // 12.3
 	};
 	auto points = vector<point>();
 	for(auto&c : m.cells)
@@ -88,7 +87,7 @@ void solver_service_gaussian::get_matrix_from_map(solver_map& m, vector<point>& 
 		auto& empty = entry.by_state[cell_state_empty];
 		for(auto& c : empty)
 		{
-			hint_points.insert(c.pt);
+			hint_points.insert(c->pt);
 		}
 		indices[pt] = i;
 	}
@@ -104,13 +103,18 @@ void solver_service_gaussian::get_matrix_from_map(solver_map& m, vector<point>& 
 	{
 		auto& hint_cell = hint_cells[i];
 		auto& entry = m.neighbour_cache_get(hint_cell.pt);
-		auto remaining_hint = static_cast<int>(hint_cell.hint - entry.by_flag[cell_flag_has_mine].size());
+		auto remaining_hint = static_cast<int>(hint_cell.hint - entry.by_flag[cell_flag_has_mine >> 2].size());
 
 		auto row = vector<int>(points.size() + 1);
-		auto& undecided_neighbours = m.neighbour_cache_get(hint_cell.pt).by_param[cell_state_filled | cell_flag_none];
+		auto& undecided_neighbours = m.neighbour_cache_get(hint_cell.pt).by_state[cell_state_filled];
 		for(auto& undecided_neighbour : undecided_neighbours)
 		{
-			auto& index = indices[undecided_neighbour.pt];
+			auto flag = undecided_neighbour->state & cell_flags;
+			if(flag != cell_flag_none)
+			{
+				continue;
+			}
+			auto& index = indices[undecided_neighbour->pt];
 			row[index] = 1;
 		}
 		row[row.size() - 1] = remaining_hint;
@@ -237,6 +241,19 @@ void solver_service_gaussian::reduce_matrix(vector<vector<int>>& matrix, vector<
 	}
 
 	auto non_zero_indices = vector<int>();
+	
+	auto hashes = vector<unsigned int>();
+	hashes.reserve(matrix.size());
+	for(auto i = 0; i < matrix.size(); i++)
+	{
+		auto& row = matrix[i];
+		unsigned int hash = 0;
+		for(auto& num : row)
+		{
+			hash = (hash * 17) ^ num;
+		}
+		hashes.push_back(hash);
+	}
 
 	for(auto i = 0; i < matrix.size(); i++)
 	{
@@ -253,21 +270,35 @@ void solver_service_gaussian::reduce_matrix(vector<vector<int>>& matrix, vector<
 		if(non_zero_index == -1)
 		{
 			vector_erase_index_safe(matrix, i);
+			vector_erase_index_safe(hashes, i);
 			--i;
 			continue;
 		}
 		auto duplicate = false;
 		for(auto j = i+1; j < matrix.size(); j++)
 		{
-			if(row == matrix[j])
+			if(hashes[i] != hashes[j])
 			{
-				duplicate = true;
+				continue;
+			}
+			duplicate = true;
+			for(int k = row.size() - 1; k >= 0; --k)
+			{
+				if(row[k] != matrix[j][k])
+				{
+					duplicate = false;
+					break;
+				}
+			}
+			if(duplicate)
+			{
 				break;
 			}
 		}
 		if(duplicate)
 		{
 			vector_erase_index_safe(matrix, i);
+			vector_erase_index_safe(hashes, i);
 			--i;
 			continue;
 		}
@@ -462,18 +493,20 @@ void solver_service_gaussian::reduce_matrix(vector<vector<int>>& matrix, vector<
 	}
 	for(int i = 0; i < row_list.size(); i++)
 	{
-		for(auto& row : row_list)
+		//for(auto& row : row_list)
+		//{
+		auto& row = row_list[i];
+		auto new_row = vector<int>();
+		new_row.reserve(row.size() - columns_to_remove.size());
+		for(auto j = 0; j < row.size(); j++)
 		{
-			auto new_row = vector<int>();
-			for(auto j = 0; j < row.size(); j++)
+			if(columns_to_remove.find(j) != columns_to_remove.end())
 			{
-				if(columns_to_remove.find(j) != columns_to_remove.end())
-				{
-					new_row.push_back(row[j]);
-				}
+				new_row.push_back(row[j]);
 			}
-			row_list[i] = new_row;
 		}
+		row_list[i] = new_row;
+		//}
 	}
 	
 	matrix = vector<vector<int>>();

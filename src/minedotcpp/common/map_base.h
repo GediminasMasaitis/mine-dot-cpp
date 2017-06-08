@@ -73,20 +73,19 @@ namespace minedotcpp
 				}
 			}
 
-			void calculate_neighbours_of(point pt, std::vector<TCell>& cells, bool include_self = false)
+			void calculate_neighbours_of(point pt, std::vector<TCell*>& cells, bool include_self = false)
 			{
 				for (auto i = 0; i < neighbour_offset_count; i++)
 				{
-					const auto cell_ptr = cell_try_get(pt + neighbour_offsets[i]);
+					auto cell_ptr = cell_try_get(pt + neighbour_offsets[i]);
 					if (cell_ptr != nullptr)
 					{
-						auto& c = *cell_ptr;
-						cells.push_back(c);
+						cells.push_back(cell_ptr);
 					}
 				}
 				if (include_self)
 				{
-					cells.push_back(cell_get(pt));
+					cells.push_back(&cell_get(pt));
 				}
 			}
 		};

@@ -285,7 +285,7 @@ void solver_service_separation_combination_finding::get_combination_search_map(s
 		auto& entry = solver_map.neighbour_cache_get(c.pt).by_state[cell_state_empty];
 		for (auto& cell : entry)
 		{
-			empty_pts_set.insert(cell.pt.x * solver_map.height + cell.pt.y);
+			empty_pts_set.insert(cell->pt.x * solver_map.height + cell->pt.y);
 		}
 	}
 
@@ -306,9 +306,9 @@ void solver_service_separation_combination_finding::get_combination_search_map(s
 			if (j < filled_neighbours.size())
 			{
 				auto& neighbour = filled_neighbours[j];
-				auto& cell_index = cell_indices[neighbour.pt.x * solver_map.height + neighbour.pt.y];
+				auto& cell_index = cell_indices[neighbour->pt.x * solver_map.height + neighbour->pt.y];
 				auto neighbour_byte = static_cast<unsigned char>(cell_index << 2);
-				auto flag = neighbour.state & cell_flags;
+				auto flag = neighbour->state & cell_flags;
 				neighbour_byte |= flag >> 2;
 				m.push_back(neighbour_byte);
 			}

@@ -19,7 +19,7 @@ namespace minedotcpp
 			cell_flag_none = 0 << 2,
 			cell_flag_has_mine = 1 << 2,
 			cell_flag_doesnt_have_mine = 2 << 2,
-			cell_flag_not_sure = 3 << 2
+			//cell_flag_not_sure = 3 << 2
 		};
 
 		inline cell_param operator | (cell_param a, cell_param b)

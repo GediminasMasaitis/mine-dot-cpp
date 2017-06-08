@@ -39,11 +39,11 @@ void game_map_generator::generate_with_mine_count(game_map& m, point starting_po
 		vector_erase_value_quick<point>(coordinates, starting_position);
 		if(guarantee_opening)
 		{
-			auto starting_neighbours = std::vector<game_cell>();
+			auto starting_neighbours = std::vector<game_cell*>();
 			m.calculate_neighbours_of(starting_position, starting_neighbours);
 			for(auto& starting_neighbour : starting_neighbours)
 			{
-				vector_erase_value_quick(coordinates, starting_neighbour.pt);
+				vector_erase_value_quick(coordinates, starting_neighbour->pt);
 			}
 		}
 		//map[startingPosition].State = CellState.Empty;
@@ -63,12 +63,12 @@ void game_map_generator::generate_with_mine_count(game_map& m, point starting_po
 		{
 			continue;
 		}
-		auto neighbours = std::vector<game_cell>();
+		auto neighbours = std::vector<game_cell*>();
 		m.calculate_neighbours_of(c.pt, neighbours);
 		c.hint = 0;
 		for(auto& neighbour : neighbours)
 		{
-			if(neighbour.has_mine)
+			if(neighbour->has_mine)
 			{
 				++c.hint;
 			}

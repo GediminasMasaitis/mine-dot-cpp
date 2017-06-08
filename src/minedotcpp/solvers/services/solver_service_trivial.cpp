@@ -19,8 +19,8 @@ void solver_service_trivial::solve_trivial(solver_map& m, point_map<bool>& verdi
 			}
 			auto& neighbour_entry = m.neighbour_cache_get(cell.pt);
 			auto& filled_neighbours = neighbour_entry.by_state[cell_state_filled];
-			auto& flagged_neighbours = neighbour_entry.by_flag[cell_flag_has_mine];
-			auto& antiflagged_neighbours = neighbour_entry.by_flag[cell_flag_doesnt_have_mine];
+			auto& flagged_neighbours = neighbour_entry.by_flag[cell_flag_has_mine >> 2];
+			auto& antiflagged_neighbours = neighbour_entry.by_flag[cell_flag_doesnt_have_mine >> 2];
 			if (filled_neighbours.size() == flagged_neighbours.size() + antiflagged_neighbours.size())
 			{
 				continue;
@@ -32,16 +32,16 @@ void solver_service_trivial::solve_trivial(solver_map& m, point_map<bool>& verdi
 			{
 				for (auto& neighbour : filled_neighbours)
 				{
-					if (neighbour.state == (cell_state_filled | cell_flag_has_mine))
+					if (neighbour->state == (cell_state_filled | cell_flag_has_mine))
 					{
 						continue;
 					}
-					if (verdicts.find(neighbour.pt) != verdicts.end())
+					if (verdicts.find(neighbour->pt) != verdicts.end())
 					{
 						continue;
 					}
-					current_round_verdicts[neighbour.pt] = flagging;
-					verdicts[neighbour.pt] = flagging;
+					current_round_verdicts[neighbour->pt] = flagging;
+					verdicts[neighbour->pt] = flagging;
 				}
 			}
 		}

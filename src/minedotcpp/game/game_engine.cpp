@@ -52,9 +52,6 @@ void minedotcpp::game::game_engine::toggle_flag(common::point pt)
 	case common::cell_flag_has_mine:
 		set_flag(pt, common::cell_flag_none);
 		break;
-	case common::cell_flag_not_sure:
-		set_flag(pt, common::cell_flag_has_mine);
-		break;
 	default:
 		throw "wut";
 	}
@@ -80,16 +77,16 @@ minedotcpp::game::game_result minedotcpp::game::game_engine::open_cell(common::p
 		to_open.erase(coord);
 		if (c.hint == 0)
 		{
-			auto neighbours = std::vector<game_cell>();
+			auto neighbours = std::vector<game_cell*>();
 			gm.calculate_neighbours_of(c.pt, neighbours);
 			for (auto& neighbour : neighbours)
 			{
-				if (neighbour.state == common::cell_state_filled)
+				if (neighbour->state == common::cell_state_filled)
 				{
-					if (visited.find(neighbour.pt) == visited.end())
+					if (visited.find(neighbour->pt) == visited.end())
 					{
-						to_open.insert(neighbour.pt);
-						visited.insert(neighbour.pt);
+						to_open.insert(neighbour->pt);
+						visited.insert(neighbour->pt);
 					}
 				}
 			}

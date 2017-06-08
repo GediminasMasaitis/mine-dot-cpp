@@ -75,7 +75,7 @@ void text_map_parser::parse(istream& is, map& m) const
 				c.hint = 0;
 				break;
 			case '?':
-				c.state = cell_state_filled | cell_flag_not_sure;
+				c.state = cell_state_filled;
 				c.hint = 0;
 				break;
 			case '!':

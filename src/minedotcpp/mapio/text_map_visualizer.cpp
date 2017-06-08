@@ -46,9 +46,6 @@ void text_map_visualizer::visualize(minedotcpp::common::map& m, ostream& os) con
 				case cell_flag_doesnt_have_mine:
 					os << 'v';
 					break;
-				case cell_flag_not_sure:
-					os << '?';
-					break;
 				default:
 					os << '#';
 					break;
