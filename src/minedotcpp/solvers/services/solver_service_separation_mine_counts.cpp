@@ -231,7 +231,7 @@ bool solver_service_separation_mine_counts::get_variable_mine_count_borders_prob
 	auto total_combos = 1;
 	auto counts = point_map<double>();
 	auto count_locks = point_map<mutex*>();
-	mutex common_lock;;
+	mutex common_lock;
 	for (auto& b : variable_borders)
 	{
 		for (auto& v : b.verdicts)
@@ -251,7 +251,6 @@ bool solver_service_separation_mine_counts::get_variable_mine_count_borders_prob
 		total_combination_length += static_cast<int>(b.cells.size());
 		total_combos *= static_cast<int>(b.valid_combinations.size());
 	}
-	printf("%i\n", total_combos);
 	if(total_combos >= settings.variable_mine_count_borders_probabilities_give_up_from)
 	{
 		return false;
