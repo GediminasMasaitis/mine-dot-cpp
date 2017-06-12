@@ -363,12 +363,17 @@ void solver_service_separation_combination_finding::find_valid_border_cell_combi
 		}
 		point_map<bool> predictions;
 		predictions.resize(border_length);
+		auto mine_count = 0;
 		for (unsigned int j = 0; j < border_length; j++)
 		{
 			auto& pt = border.cells[j].pt;
 			auto has_mine = (prediction & (1 << j)) > 0;
 			predictions[pt] = has_mine;
+			if(has_mine)
+			{
+				++mine_count;
+			}
 		}
-		border.valid_combinations.push_back(predictions);
+		border.valid_combinations.emplace_back(mine_count, predictions);
 	}
 }

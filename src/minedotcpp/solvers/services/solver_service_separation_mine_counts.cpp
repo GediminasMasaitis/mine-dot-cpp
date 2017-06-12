@@ -96,13 +96,16 @@ void minedotcpp::solvers::services::solver_service_separation_mine_counts::solve
 	{
 		auto exact_non_mine_count = exact_border_size - exact_mine_count;
 		auto non_border_cell_count = static_cast<int>(non_border_cells.size());
-		get_variable_mine_count_borders_probabilities(borders_with_variable_mine_count, m.remaining_mine_count, m.undecided_count, non_border_cell_count, exact_mine_count, exact_non_mine_count, all_probabilities, non_border_mine_count_probabilities);
+		auto success = get_variable_mine_count_borders_probabilities(borders_with_variable_mine_count, m.remaining_mine_count, m.undecided_count, non_border_cell_count, exact_mine_count, exact_non_mine_count, all_probabilities, non_border_mine_count_probabilities);
+		if(!success)
+		{
+			return;
+		}
 	}
 
 	// If requested, we calculate the probabilities of mines in non-border cells, and copy them over.
 	if (settings.mine_count_solve_non_border)
 	{
-
 		get_non_border_probabilities_by_mine_count(m, all_probabilities, non_border_cells, all_probabilities);
 	}
 
@@ -115,16 +118,8 @@ void solver_service_separation_mine_counts::trim_valid_combinations_by_mine_coun
 	for (auto i = 0; i < b.valid_combinations.size(); i++)
 	{
 		auto& combination = b.valid_combinations[i];
-		auto mine_prediction_count = 0;
-		for (auto& p : combination)
-		{
-			if (p.second)
-			{
-				++mine_prediction_count;
-			}
-		}
-		auto combination_size = static_cast<int>(combination.size());
-		auto isValid = is_prediction_valid_by_mine_count(mine_prediction_count, combination_size, minesRemaining, undecidedCellsRemaining, minesElsewhere, nonMineCountElsewhere);
+		auto combination_size = combination.pts.size();
+		auto isValid = is_prediction_valid_by_mine_count(combination.mine_count, combination_size, minesRemaining, undecidedCellsRemaining, minesElsewhere, nonMineCountElsewhere);
 		if (!isValid)
 		{
 			b.valid_combinations.erase(b.valid_combinations.begin() + i);
@@ -180,31 +175,26 @@ void solver_service_separation_mine_counts::thr_mine_counts(vector<border>& vari
 {
 	for (auto i = min; i < max; i++)
 	{
-		auto combinationArr = vector<point_map<bool>>();
+		auto combinationArr = vector<combination*>();
 		auto mine_prediction_count = 0;
+		lldiv_t res{ i, 0 };
 		for (auto j = 0; j < variable_borders.size(); j++)
 		{
-			lldiv_t res{ i, 0 };
-			res = div(res.quot, variable_borders[j].valid_combinations.size());
+			auto valid_combination_size =  variable_borders[j].valid_combinations.size();
+			res = div(res.quot, valid_combination_size);
 			auto& combo = variable_borders[j].valid_combinations[res.rem];
-			for (auto& p : combo)
-			{
-				if (p.second)
-				{
-					++mine_prediction_count;
-				}
-			}
-			combinationArr.push_back(combo);
+			mine_prediction_count += combo.mine_count;
+			combinationArr.push_back(&combo);
 		}
 
 		auto mines_in_non_border = mines_remaining - mines_elsewhere - mine_prediction_count;
 		if (mines_in_non_border < 0)
 		{
-			return;
+			continue;
 		}
 		if (mines_in_non_border > non_border_cell_count)
 		{
-			return;
+			continue;
 		}
 		auto& ratio = ratios[mines_in_non_border];
 		{
@@ -219,7 +209,7 @@ void solver_service_separation_mine_counts::thr_mine_counts(vector<border>& vari
 		}
 		for (auto& combo : combinationArr)
 		{
-			for (auto& verdict : combo)
+			for (auto& verdict : combo->pts)
 			{
 				if (verdict.second)
 				{
@@ -232,7 +222,7 @@ void solver_service_separation_mine_counts::thr_mine_counts(vector<border>& vari
 	}
 }
 
-void solver_service_separation_mine_counts::get_variable_mine_count_borders_probabilities(vector<border>& variable_borders, int mines_remaining, int undecided_cells_remaining, int non_border_cell_count, int mines_elsewhere, int non_mine_count_elsewhere, point_map<double>& target_probabilities, google::dense_hash_map<int, double>& non_border_mine_count_probabilities) const
+bool solver_service_separation_mine_counts::get_variable_mine_count_borders_probabilities(vector<border>& variable_borders, int mines_remaining, int undecided_cells_remaining, int non_border_cell_count, int mines_elsewhere, int non_mine_count_elsewhere, point_map<double>& target_probabilities, google::dense_hash_map<int, double>& non_border_mine_count_probabilities) const
 {
 	auto max_mines = 0;
 	auto min_mines = 0;
@@ -260,6 +250,11 @@ void solver_service_separation_mine_counts::get_variable_mine_count_borders_prob
 		min_mines += b.min_mine_count;
 		total_combination_length += static_cast<int>(b.cells.size());
 		total_combos *= static_cast<int>(b.valid_combinations.size());
+	}
+	printf("%i\n", total_combos);
+	if(total_combos >= settings.variable_mine_count_borders_probabilities_give_up_from)
+	{
+		return false;
 	}
 
 	auto min_mines_in_non_border = mines_remaining - mines_elsewhere - max_mines + alreadyFoundMines;
@@ -339,6 +334,7 @@ void solver_service_separation_mine_counts::get_variable_mine_count_borders_prob
 		auto probability = count.second / total_valid_combinations;
 		target_probabilities[count.first] = probability;
 	}
+	return true;
 }
 
 void solver_service_separation_mine_counts::get_non_border_probabilities_by_mine_count(solver_map& map, point_map<double>& common_border_probabilities, vector<cell>& non_border_undecided_cells, point_map<double>& probabilities) const

@@ -2,8 +2,6 @@
 #include "../border.h"
 #include "../../debug/debugging.h"
 #include "solver_service_separation.h"
-#include <thread>
-#include <mutex>
 #include <queue>
 #include "solver_service_separation_mine_counts.h"
 #include "solver_service_separation_combination_finding.h"
@@ -21,86 +19,84 @@ void solver_service_separation::get_pattern(solver_map& m) const
 
 	find_common_border(m, common_border);
 
+	auto border_pts = point_set();
+	auto target_pt = point{ 1,3 };
+	auto sequence = vector<cell>();
+	auto all_flagged_coordinates = point_set();
+	for(auto& cell : m.cells)
 	{
-		auto border_pts = point_set();
-		auto target_pt = point{ 1,3 };
-		auto sequence = vector<cell>();
-		auto all_flagged_coordinates = point_set();
-		for(auto& cell : m.cells)
+		if(cell.state == (cell_state_filled | cell_flag_has_mine) || cell.state == (cell_state_filled | cell_flag_doesnt_have_mine))
 		{
-			if(cell.state == (cell_state_filled | cell_flag_has_mine) || cell.state == (cell_state_filled | cell_flag_doesnt_have_mine))
-			{
-				all_flagged_coordinates.insert(cell.pt);
-			}
+			all_flagged_coordinates.insert(cell.pt);
 		}
-		for(auto& c : common_border.cells)
+	}
+	for(auto& c : common_border.cells)
+	{
+		border_pts.insert(c.pt);
+	}
+	breadth_search_border(m, border_pts, target_pt, sequence, true);
+	auto cells = vector<cell>();
+	auto prev_cells = 0;
+	for(auto i = 0; i < sequence.size(); i++)
+	{
+		auto& c = sequence[i];
+		cells.push_back(c);
+		auto partial_map = solver_map();
+		auto partial_border = border();
+		partial_border.cells = cells;
+		calculate_partial_map_and_trim_partial_border(partial_border, partial_map, m, all_flagged_coordinates);
+		if(prev_cells == partial_border.cells.size())
 		{
-			border_pts.insert(c.pt);
+			continue;
 		}
-		breadth_search_border(m, border_pts, target_pt, sequence, true);
-		auto cells = vector<cell>();
-		auto prev_cells = 0;
-		for(auto i = 0; i < sequence.size(); i++)
+		prev_cells = partial_border.cells.size();
+		partial_map.calculate_additional_data();
+		auto bs = vector<border>();
+		solve_border(partial_map, partial_border, false, bs);
+		visualize(partial_map, { partial_border }, false);
+		dump_verdicts(partial_border.verdicts);
+		if(partial_border.verdicts.find(target_pt) != partial_border.verdicts.end())
 		{
-			auto& c = sequence[i];
-			cells.push_back(c);
+			break;
+		}
+
+	}
+	auto cells_changed = true;
+
+	while(cells_changed)
+	{
+		cells_changed = false;
+		for(auto i = 1; i < cells.size(); i++)
+		{
+			auto& c = cells[i];
+			auto try_cells = cells;
+			vector_erase_index_safe(try_cells, i);
 			auto partial_map = solver_map();
 			auto partial_border = border();
-			partial_border.cells = cells;
+			partial_border.cells = try_cells;
 			calculate_partial_map_and_trim_partial_border(partial_border, partial_map, m, all_flagged_coordinates);
-			if(prev_cells == partial_border.cells.size())
+			try_cells = partial_border.cells;
+			if(partial_border.cells.size() == 0)
 			{
 				continue;
 			}
-			prev_cells = partial_border.cells.size();
 			partial_map.calculate_additional_data();
 			auto bs = vector<border>();
 			solve_border(partial_map, partial_border, false, bs);
-			visualize(partial_map, { partial_border }, false);
-			dump_verdicts(partial_border.verdicts);
 			if(partial_border.verdicts.find(target_pt) != partial_border.verdicts.end())
 			{
+				cells = try_cells;
+				cells_changed = true;
 				break;
 			}
-
 		}
-		auto cells_changed = true;
-
-		while(cells_changed)
-		{
-			cells_changed = false;
-			for(auto i = 1; i < cells.size(); i++)
-			{
-				auto& c = cells[i];
-				auto try_cells = cells;
-				vector_erase_index_safe(try_cells, i);
-				auto partial_map = solver_map();
-				auto partial_border = border();
-				partial_border.cells = try_cells;
-				calculate_partial_map_and_trim_partial_border(partial_border, partial_map, m, all_flagged_coordinates);
-				try_cells = partial_border.cells;
-				if(partial_border.cells.size() == 0)
-				{
-					continue;
-				}
-				partial_map.calculate_additional_data();
-				auto bs = vector<border>();
-				solve_border(partial_map, partial_border, false, bs);
-				if(partial_border.verdicts.find(target_pt) != partial_border.verdicts.end())
-				{
-					cells = try_cells;
-					cells_changed = true;
-					break;
-				}
-			}
-		}
-
-		auto final_border = border();
-		final_border.cells = cells;
-		auto final_map = solver_map();
-		calculate_partial_map_and_trim_partial_border(final_border, final_map, m, all_flagged_coordinates);
-		visualize(final_map, { final_border }, false);
 	}
+
+	auto final_border = border();
+	final_border.cells = cells;
+	auto final_map = solver_map();
+	calculate_partial_map_and_trim_partial_border(final_border, final_map, m, all_flagged_coordinates);
+	visualize(final_map, { final_border }, false);
 }
 
 void solver_service_separation::solve_separation(solver_map& m, point_map<double>& probabilities, point_map<bool>& verdicts) const
@@ -217,7 +213,11 @@ void solver_service_separation::solve_border(solver_map& m, border& b, bool allo
 			//b.cells.erase(b.cells.begin() + c_index);
 			for (auto& valid_combination : b.valid_combinations)
 			{
-				valid_combination.erase(whole_border_result.first);
+				valid_combination.pts.erase(whole_border_result.first);
+				if(whole_border_result.second)
+				{
+					--valid_combination.mine_count;
+				}
 			}
 		}
 	}
@@ -494,14 +494,7 @@ void solver_service_separation::calculate_min_max_mine_counts(border& b) const
 
 	for (auto& valid_combination : b.valid_combinations)
 	{
-		auto mine_count = 0;
-		for (auto& verdict : valid_combination)
-		{
-			if (verdict.second)
-			{
-				mine_count++;
-			}
-		}
+		auto mine_count = valid_combination.mine_count;
 		if (mine_count < b.min_mine_count)
 		{
 			b.min_mine_count = mine_count;
@@ -527,7 +520,7 @@ void solver_service_separation::calculate_border_probabilities(border& b) const
 		auto mine_count = 0;
 		for (auto& combination : b.valid_combinations)
 		{
-			if (combination[c.pt])
+			if (combination.pts[c.pt])
 			{
 				++mine_count;
 			}
