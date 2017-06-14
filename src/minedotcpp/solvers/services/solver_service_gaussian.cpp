@@ -15,7 +15,7 @@ solve_gaussian(solver_map& m, point_map<bool>& verdicts) const
 	auto parameters = vector<matrix_reduction_parameters>
 	{
 		//matrix_reduction_parameters(true, false, false,false, false), // 0.4
-		//matrix_reduction_parameters(false, true, false, true, true), // 20.8
+		matrix_reduction_parameters(false, true, false, true, true), // 20.8
 		//matrix_reduction_parameters(false, true, true, true, true), // 11.7
 		//matrix_reduction_parameters(false, false, false, true, true), // 9.9
 		//matrix_reduction_parameters(false, false, true, true, true), // 16.2
@@ -24,7 +24,7 @@ solve_gaussian(solver_map& m, point_map<bool>& verdicts) const
 		//matrix_reduction_parameters(false, true, true, true, false) // 12.3
 
 		// everything everything = 34.3
-		matrix_reduction_parameters(false, false, false, false, false),
+		/*matrix_reduction_parameters(false, false, false, false, false),
 		matrix_reduction_parameters(false, false, false, false, true),
 		matrix_reduction_parameters(false, false, false, true, false),
 		matrix_reduction_parameters(false, false, false, true, true),
@@ -39,7 +39,7 @@ solve_gaussian(solver_map& m, point_map<bool>& verdicts) const
 		matrix_reduction_parameters(false, true, true, false, false),
 		matrix_reduction_parameters(false, true, true, false, true),
 		matrix_reduction_parameters(false, true, true, true, false),
-		matrix_reduction_parameters(false, true, true, true, true),
+		matrix_reduction_parameters(false, true, true, true, true),*/
 	};
 	auto points = vector<point>();
 	for(auto&c : m.cells)
@@ -55,8 +55,8 @@ solve_gaussian(solver_map& m, point_map<bool>& verdicts) const
 	auto futures = vector<future<void>>();
 	for(auto& p : parameters)
 	{
-		futures.emplace_back(thr_pool->push([this, &matrix, &points, &verdicts, &sync, &p](int thr_num)
-		{
+		//futures.emplace_back(thr_pool->push([this, &matrix, &points, &verdicts, &sync, &p](int thr_num)
+		//{
 			auto local_matrix = matrix;
 			auto local_points = points;
 			auto round_verdicts = point_map<bool>();
@@ -72,7 +72,7 @@ solve_gaussian(solver_map& m, point_map<bool>& verdicts) const
 				}());
 				verdicts[verdict.first] = verdict.second;
 			}
-		}));
+		//}));
 	}
 
 	for(auto& future : futures)
@@ -137,106 +137,6 @@ void solver_service_gaussian::get_matrix_from_map(solver_map& m, vector<point>& 
 	}
 }
 
-struct target_less
-{
-	template<class It>
-	bool operator()(It const &a, It const &b) const { return *a < *b; }
-};
-struct target_equal
-{
-	template<class It>
-	bool operator()(It const &a, It const &b) const { return *a == *b; }
-};
-template<class It> It uniquify(It begin, It const end)
-{
-	std::vector<It> v;
-	v.reserve(static_cast<size_t>(std::distance(begin, end)));
-	for(It i = begin; i != end; ++i)
-	{
-		v.push_back(i);
-	}
-	std::sort(v.begin(), v.end(), target_less());
-	v.erase(std::unique(v.begin(), v.end(), target_equal()), v.end());
-	std::sort(v.begin(), v.end());
-	size_t j = 0;
-	for(It i = begin; i != end && j != v.size(); ++i)
-	{
-		if(i == v[j])
-		{
-			using std::iter_swap; iter_swap(i, begin);
-			++j;
-			++begin;
-		}
-	}
-	return begin;
-}
-
-class column_data
-{
-public:
-	column_data(int index, int cnt): index(index), cnt(cnt) {}
-	int index;
-	int cnt;
-};
-
-class row_separation_result
-{
-public:
-	row_separation_result(int column_index, int constant) : column_index(column_index), constant(constant) {}
-	int column_index;
-	int constant;
-};
-
-void separate_row(vector<int>& row, vector<row_separation_result>& results)
-{
-	auto constantIndex = row.size() - 1;
-	auto constant = row[constantIndex];
-
-	auto positiveSum = 0;
-	auto negativeSum = 0;
-	for(int i = 0; i < row.size() - 1; i++)
-	{
-		auto num = row[i];
-		if(num == 0)
-		{
-			continue;
-		}
-		if(num > 0)
-		{
-			positiveSum += num;
-		}
-		else
-		{
-			negativeSum += num;
-		}
-	}
-
-	if(constant == positiveSum || constant == negativeSum)
-	{
-		int forPositive;
-		int forNegative;
-		if(constant == positiveSum)
-		{
-			forPositive = 1;
-			forNegative = 0;
-		}
-		else
-		{
-			forPositive = 0;
-			forNegative = 1;
-		}
-		for(auto i = 0; i < row.size() - 1; i++)
-		{
-			if(row[i] != 0)
-			{
-				auto newConstant = row[i] > 0 ? forPositive : forNegative;
-				results.emplace_back(i, newConstant);
-			}
-		}
-		//splitsMade = true;
-	}
-}
-
 void solver_service_gaussian::reduce_matrix(vector<vector<int>>& matrix, vector<point>& coordinates, point_map<bool>& allVerdicts, const matrix_reduction_parameters& parameters) const
 {
 	//dump_gaussian_matrix(matrix);
@@ -245,85 +145,7 @@ void solver_service_gaussian::reduce_matrix(vector<vector<int>>& matrix, vector<
 		return;
 	}
 
-	auto non_zero_indices = vector<int>();
-	
-	auto hashes = vector<unsigned int>();
-	hashes.reserve(matrix.size());
-	for(auto i = 0; i < matrix.size(); i++)
-	{
-		auto& row = matrix[i];
-		unsigned int hash = 0;
-		for(auto& num : row)
-		{
-			hash = (hash * 17) ^ num;
-		}
-		hashes.push_back(hash);
-	}
-
-	for(auto i = 0; i < matrix.size(); i++)
-	{
-		auto& row = matrix[i];
-		auto non_zero_index = -1;
-		for(auto j = 0; j < row.size(); ++j)
-		{
-			if(row[j] != 0)
-			{
-				non_zero_index = j;
-				break;
-			}
-		}
-		if(non_zero_index == -1)
-		{
-			vector_erase_index_safe(matrix, i);
-			vector_erase_index_safe(hashes, i);
-			--i;
-			continue;
-		}
-		auto duplicate = false;
-		for(auto j = i+1; j < matrix.size(); j++)
-		{
-			if(hashes[i] != hashes[j])
-			{
-				continue;
-			}
-			duplicate = true;
-			for(int k = row.size() - 1; k >= 0; --k)
-			{
-				if(row[k] != matrix[j][k])
-				{
-					duplicate = false;
-					break;
-				}
-			}
-			if(duplicate)
-			{
-				break;
-			}
-		}
-		if(duplicate)
-		{
-			vector_erase_index_safe(matrix, i);
-			vector_erase_index_safe(hashes, i);
-			--i;
-			continue;
-		}
-		non_zero_indices.push_back(non_zero_index);
-	}
-
-	/*std::sort(matrix.begin(), matrix.end(), [](const vector<int>& lhs, const vector<int>& rhs)
-	{
-		auto index_lhs = static_cast<int>(std::find_if(lhs.begin(), lhs.end(), [](const int& i) {return i != 0; }) - lhs.begin());
-		auto index_rhs = static_cast<int>(std::find_if(rhs.begin(), rhs.end(), [](const int& i) {return i != 0; }) - rhs.begin());
-		return index_lhs < index_rhs;
-	});*/
-
-	vector_sort_by<vector<int>, int>(matrix, [](const vector<int>& row)
-	{
-		return static_cast<int>(std::find_if(row.begin(), row.end(), [](const int& i) {return i != 0; }) - row.begin());
-	}, [](const int& lhs, const int& rhs)
-	{
-		return lhs < rhs;
-	});
+	prepare_matrix(matrix);
 
 	if(matrix.size() == 0)
 	{
@@ -361,10 +183,8 @@ void solver_service_gaussian::reduce_matrix(vector<vector<int>>& matrix, vector<
 			}
 		}
 		
-		
 		std::sort(columns_data.begin(), columns_data.end(), [&parameters](const column_data& lhs, const column_data& rhs)
 		{
-
 			if(parameters.reverse_columns)
 			{
 				if(parameters.order_columns)
@@ -388,6 +208,7 @@ void solver_service_gaussian::reduce_matrix(vector<vector<int>>& matrix, vector<
 				}
 			}
 		});
+
 		auto columns = vector<int>();
 		columns.reserve(columns_data.size());
 		for(auto& col : columns_data)
@@ -400,7 +221,6 @@ void solver_service_gaussian::reduce_matrix(vector<vector<int>>& matrix, vector<
 			auto row = -1;
 			if(parameters.reverse_rows)
 			{
-
 				for(auto i = rows - 1; i >= 0; i--)
 				{
 					auto candidateNum = matrix[i][col];
@@ -431,14 +251,13 @@ void solver_service_gaussian::reduce_matrix(vector<vector<int>>& matrix, vector<
 			auto targetNum = matrix[row][col];
 			if(targetNum == -1)
 			{
-				for(int i = 0; i < cols; i++)
+				for(auto i = 0; i < cols; i++)
 				{
 					matrix[row][i] = -matrix[row][i];
 				}
 			}
-			targetNum = matrix[row][col];
-
-			assert(targetNum == 1);
+			
+			assert(matrix[row][col] == 1);
 
 			for(auto i = 0; i < rows; i++)
 			{
@@ -466,6 +285,7 @@ void solver_service_gaussian::reduce_matrix(vector<vector<int>>& matrix, vector<
 		separate_row(row, rowResults);
 		if(rowResults.size() > 0)
 		{
+			//splitsMade = true;
 			for(auto& row_result: rowResults)
 			{
 				cells_to_remove.push_back(row_result);
@@ -479,27 +299,25 @@ void solver_service_gaussian::reduce_matrix(vector<vector<int>>& matrix, vector<
 	auto columns_to_remove = google::dense_hash_set<int>();
 	columns_to_remove.set_empty_key(-1);
 	columns_to_remove.set_deleted_key(-2);
-	for(auto& c : cells_to_remove)
-	{
-		columns_to_remove.insert(c.column_index);
-	}
+	auto last_col = matrix[0].size() - 1;
 	for(auto& separation_result : cells_to_remove)
 	{
 		auto col = separation_result.column_index;
+		columns_to_remove.insert(col);
 		for(auto i = 0; i < matrix.size(); i++)
 		{
 			auto num = matrix[i][col];
 			if(num != 0)
 			{
-				matrix[i][matrix[0].size() - 1] -= separation_result.constant * num;
+				matrix[i][last_col] -= separation_result.constant * num;
 			}
 		}
-		allVerdicts[coordinates[col]] = separation_result.constant == 1;
+		auto& pt = coordinates[col];
+		auto verdict = separation_result.constant == 1;
+		allVerdicts[pt] = verdict;
 	}
-	for(int i = 0; i < row_list.size(); i++)
+	for(auto i = 0; i < row_list.size(); i++)
 	{
-		//for(auto& row : row_list)
-		//{
 		auto& row = row_list[i];
 		auto new_row = vector<int>();
 		new_row.reserve(row.size() - columns_to_remove.size());
@@ -511,11 +329,10 @@ void solver_service_gaussian::reduce_matrix(vector<vector<int>>& matrix, vector<
 			}
 		}
 		row_list[i] = new_row;
-		//}
 	}
 	
 	matrix = vector<vector<int>>();
-	for(auto i = 0; i < matrix.size(); i++)
+	for(auto i = 0; i < row_list.size(); i++)
 	{
 		auto& row = row_list[i];
 		auto non_zero_index = -1;
@@ -529,16 +346,10 @@ void solver_service_gaussian::reduce_matrix(vector<vector<int>>& matrix, vector<
 		}
 		if(non_zero_index == -1)
 		{
-			break;
+			continue;
 		}
 		matrix.push_back(row);
 	}
-	/*std::sort(matrix.begin(), matrix.end(), [](const vector<int>& lhs, const vector<int>& rhs)
-	{
-		auto index_lhs = static_cast<int>(std::find_if(lhs.begin(), lhs.end(), [](const int& i) {return i != 0; }) - lhs.begin());
-		auto index_rhs = static_cast<int>(std::find_if(rhs.begin(), rhs.end(), [](const int& i) {return i != 0; }) - rhs.begin());
-		return index_lhs < index_rhs;
-	});*/
 	vector_sort_by<vector<int>, int>(matrix, [](const vector<int>& row)
 	{
 		return static_cast<int>(std::find_if(row.begin(), row.end(), [](const int& i) {return i != 0; }) - row.begin());
@@ -546,11 +357,13 @@ void solver_service_gaussian::reduce_matrix(vector<vector<int>>& matrix, vector<
 	{
 		return lhs < rhs;
 	});
+	auto new_coordinates = vector<point>();
+	new_coordinates.reserve(coordinates.size() - columns_to_remove.size());
 	for(auto i = 0; i < coordinates.size(); i++)
 	{
-		if(columns_to_remove.find(i) != columns_to_remove.end())
+		if(columns_to_remove.find(i) == columns_to_remove.end())
 		{
-			vector_erase_index_safe(coordinates, i);
+			new_coordinates.push_back(coordinates[i]);
 		}
 	}
 	if(matrix.size() == 0)
@@ -559,6 +372,132 @@ void solver_service_gaussian::reduce_matrix(vector<vector<int>>& matrix, vector<
 	}
 	if(splitsMade)
 	{
-		reduce_matrix(matrix, coordinates, allVerdicts, parameters);
+		reduce_matrix(matrix, new_coordinates, allVerdicts, parameters);
+	}
+}
+
+void solver_service_gaussian::prepare_matrix(vector<vector<int>>& matrix) const
+{
+	auto non_zero_indices = vector<int>();
+
+	auto hashes = vector<unsigned int>();
+	hashes.reserve(matrix.size());
+	for (auto i = 0; i < matrix.size(); i++)
+	{
+		auto& row = matrix[i];
+		unsigned int hash = 0;
+		for (auto& num : row)
+		{
+			hash = (hash * 17) ^ num;
+		}
+		hashes.push_back(hash);
+	}
+
+	for (auto i = 0; i < matrix.size(); i++)
+	{
+		auto& row = matrix[i];
+		auto non_zero_index = -1;
+		for (auto j = 0; j < row.size(); ++j)
+		{
+			if (row[j] != 0)
+			{
+				non_zero_index = j;
+				break;
+			}
+		}
+		if (non_zero_index == -1)
+		{
+			vector_erase_index_safe(matrix, i);
+			vector_erase_index_safe(hashes, i);
+			--i;
+			continue;
+		}
+		auto duplicate = false;
+		for (auto j = i + 1; j < matrix.size(); j++)
+		{
+			if (hashes[i] != hashes[j])
+			{
+				continue;
+			}
+			duplicate = true;
+			for (int k = row.size() - 1; k >= 0; --k)
+			{
+				if (row[k] != matrix[j][k])
+				{
+					duplicate = false;
+					break;
+				}
+			}
+			if (duplicate)
+			{
+				break;
+			}
+		}
+		if (duplicate)
+		{
+			vector_erase_index_safe(matrix, i);
+			vector_erase_index_safe(hashes, i);
+			--i;
+			continue;
+		}
+		non_zero_indices.push_back(non_zero_index);
+	}
+
+	vector_sort_by<vector<int>, int>(matrix, [](const vector<int>& row)
+	{
+		return static_cast<int>(std::find_if(row.begin(), row.end(), [](const int& i) {return i != 0; }) - row.begin());
+	}, [](const int& lhs, const int& rhs)
+	{
+		return lhs < rhs;
+	});
+}
+
+void solver_service_gaussian::separate_row(vector<int>& row, vector<row_separation_result>& results) const
+{
+	auto constantIndex = row.size() - 1;
+	auto constant = row[constantIndex];
+
+	auto positiveSum = 0;
+	auto negativeSum = 0;
+	for (int i = 0; i < row.size() - 1; i++)
+	{
+		auto num = row[i];
+		if (num == 0)
+		{
+			continue;
+		}
+		if (num > 0)
+		{
+			positiveSum += num;
+		}
+		else
+		{
+			negativeSum += num;
+		}
+	}
+
+	if (constant == positiveSum || constant == negativeSum)
+	{
+		int forPositive;
+		int forNegative;
+		if (constant == positiveSum)
+		{
+			forPositive = 1;
+			forNegative = 0;
+		}
+		else
+		{
+			forPositive = 0;
+			forNegative = 1;
+		}
+		for (auto i = 0; i < row.size() - 1; i++)
+		{
+			if (row[i] != 0)
+			{
+				auto newConstant = row[i] > 0 ? forPositive : forNegative;
+				results.emplace_back(i, newConstant);
+			}
+		}
+		//splitsMade = true;
 	}
 }
