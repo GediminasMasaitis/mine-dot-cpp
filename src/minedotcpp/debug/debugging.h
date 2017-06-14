@@ -7,6 +7,15 @@
 #include <sstream>
 #include "../game/game_map.h"
 
+static void dump_point_vector(std::vector<minedotcpp::common::point> points)
+{
+	for(auto i = 0; i < points.size(); ++i)
+	{
+		auto pt = points[i];
+		std::cout << i << ": [" << pt.x << "; " << pt.y << "]" << std::endl;
+	}
+}
+
 static void dump_gaussian_matrix(std::vector<std::vector<int>> matrix)
 {
 	for(auto& row : matrix)
