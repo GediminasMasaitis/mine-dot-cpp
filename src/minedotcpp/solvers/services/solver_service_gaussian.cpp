@@ -65,6 +65,11 @@ solve_gaussian(solver_map& m, point_map<bool>& verdicts) const
 			lock_guard<mutex> guard(sync);
 			for(auto& verdict : round_verdicts)
 			{
+				assert([&]()
+				{
+					auto old_iter = verdicts.find(verdict.first);
+					return old_iter == verdicts.end() || old_iter->second == verdict.second;
+				}());
 				verdicts[verdict.first] = verdict.second;
 			}
 		}));

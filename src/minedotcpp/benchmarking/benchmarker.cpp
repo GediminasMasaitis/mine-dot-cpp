@@ -1,6 +1,7 @@
 #include "benchmarker.h"
 #include "../game/game_engine.h"
 #include <chrono>
+#include "../debug/debugging.h"
 
 void minedotcpp::benchmarking::benchmarker::benchmark_multiple(solvers::solver& s, int width, int height, int mine_count, int tests_to_run, benchmark_density_group& group)
 {
@@ -8,6 +9,7 @@ void minedotcpp::benchmarking::benchmarker::benchmark_multiple(solvers::solver& 
 	for(auto i = 0; i < tests_to_run; i++)
 	{
 		auto entry = benchmark_entry();
+		entry.map_index = i;
 		benchmark(i, s, width, height, mine_count, entry);
 		group.entries.push_back(entry);
 	}
@@ -18,6 +20,10 @@ void minedotcpp::benchmarking::benchmarker::benchmark(int benchmark_index, solve
 	common::point starting_pt = {width >> 1, height >> 1};
 	auto engine = game::game_engine(generator);
 	engine.start_with_mine_count(width, height, starting_pt, true, mine_count);
+	/*if (benchmark_index == 482)
+	{
+		visualize(engine.gm, false);
+	}*/
 	auto clock = std::chrono::high_resolution_clock();
 	auto iteration = 0;
 	while (true)
@@ -52,9 +58,17 @@ void minedotcpp::benchmarking::benchmarker::benchmark(int benchmark_index, solve
 					{
 					case game::game_won:
 						entry.solved = true;
+						if(on_end != nullptr)
+						{
+							on_end(entry);
+						}
 						return;
 					case game::game_lost:
 						entry.solved = false;
+						if (on_end != nullptr)
+						{
+							on_end(entry);
+						}
 						return;
 					default:
 						break;

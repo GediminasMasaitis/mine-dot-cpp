@@ -5,6 +5,7 @@
 #include "../solvers/border.h"
 #include <iostream>
 #include <sstream>
+#include "../game/game_map.h"
 
 static void dump_gaussian_matrix(std::vector<std::vector<int>> matrix)
 {
@@ -176,6 +177,26 @@ static void visualize(minedotcpp::common::map& m, std::vector<std::vector<minedo
 		std::replace(str.begin(), str.end(), 'X', ' ');
 		puts(str.c_str());
 	}
+}
+
+static void visualize(minedotcpp::game::game_map& gm, bool external)
+{
+	auto m = minedotcpp::common::map();
+	m.init(gm.width, gm.height, gm.remaining_mine_count, minedotcpp::common::cell_state_wall);
+	for (auto& gc : gm.cells)
+	{
+		auto& c = m.cell_get(gc.pt);
+		c = static_cast<minedotcpp::common::cell>(gc);
+		if (gc.has_mine)
+		{
+			c.state = minedotcpp::common::cell_state_filled | minedotcpp::common::cell_flag_has_mine;
+		}
+		else
+		{
+			c.state = minedotcpp::common::cell_state_empty;
+		}
+	}
+	visualize(m, std::vector<std::vector<minedotcpp::common::point>>(), external);
 }
 
 static void visualize(minedotcpp::common::map& m, std::vector<std::vector<minedotcpp::common::cell>> regions, bool external)

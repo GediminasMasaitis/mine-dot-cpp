@@ -89,8 +89,16 @@ auto total_iterations = 0;
 
 void on_iteration_impl(int benchmark_index, map& m, point_map<solver_result>& results, int iteration, int duration)
 {
-	printf("Map: %5i, Total iterations: %7i, Iteration: %3i;  Time taken: %4i us\n", benchmark_index, total_iterations++, iteration, duration);
+	//printf("Map: %5i, Total iterations: %7i, Iteration: %3i;  Time taken: %5i us\n", benchmark_index, total_iterations++, iteration, duration);
 	//visualize(m, results, false);
+}
+
+void on_end_impl(minedotcpp::benchmarking::benchmark_entry& entry)
+{
+	//auto fs = ofstream("C:\\Temp\\map_end.txt", ios::app);
+	//fs << entry.map_index << " " << entry.solved << endl;
+	//fs.close();
+	printf("Map: %5i, Success: %s, Time taken: %4i ms,\n", entry.map_index, entry.solved ? "Y" : "N", entry.total_duration / 1000);
 }
 
 void benchmark()
@@ -98,13 +106,16 @@ void benchmark()
 	auto mt = std::mt19937(0);
 	auto benchmarker = minedotcpp::benchmarking::benchmarker(mt);
 	benchmarker.on_iteration = on_iteration_impl;
+	benchmarker.on_end = on_end_impl;
 	auto settings = solver_settings();
+	settings.trivial_solve = false;
+	settings.gaussian_stop_always = true;
 	settings.separation_single_border_stop_on_no_mine_verdict = false;
 	settings.valid_combination_search_open_cl_platform_id = 0;
 	settings.guess_if_no_no_mine_verdict = true;
 	auto solvr = solver(settings);
 	auto group = minedotcpp::benchmarking::benchmark_density_group();
-	auto count = 100;
+	auto count = 1000;
 	benchmarker.benchmark_multiple(solvr, 16,16, 56, count, group);
 	cout << "Density: " << group.density << endl;
 	auto sum = 0;
@@ -119,7 +130,7 @@ void benchmark()
 		}
 	}
 	auto success_rate = (static_cast<double>(success_count) / count) * 100;
-	cout << endl << "Total: " << sum << " us" << endl;
+	cout << endl << "Total: " << (sum/1000) << " ms" << endl;
 	cout << "Success rate: " << success_rate << "%" << endl;
 }
 
@@ -167,8 +178,8 @@ int main(int argc, char* argv[])
 	MoveWindow(wh, rect.left, 50, 1300, 950, TRUE);
 #endif
 	//pattern_search_test();
-	solve_from_file(argc, argv);
-	//benchmark();
+	//solve_from_file(argc, argv);
+	benchmark();
 	//test_global_api();
 	cout << "Press any key to continue" << endl;
 	getc(stdin);

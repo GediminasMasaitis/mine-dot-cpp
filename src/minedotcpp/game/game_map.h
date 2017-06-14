@@ -11,6 +11,7 @@ namespace minedotcpp
 		{
 		public:
 			void to_regular_map(common::map& m);
+			void from_regular_map(minedotcpp::common::map& m);
 		};
 	}
 }
