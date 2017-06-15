@@ -60,6 +60,10 @@ namespace minedotcpp
 
 			bool guess_if_no_no_mine_verdict = true;
 			bool guess_if_no_verdict = false;
+
+			int debug_setting_1 = 0;
+			int debug_setting_2 = 0;
+			int debug_setting_3 = 0;
 		};
 	}
 }
