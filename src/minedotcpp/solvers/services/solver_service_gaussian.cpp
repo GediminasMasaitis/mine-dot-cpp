@@ -24,7 +24,7 @@ solve_gaussian(solver_map& m, point_map<bool>& verdicts) const
 		//matrix_reduction_parameters(false, true, true, true, false) // 12.3
 
 		// everything everything = 34.3
-		/*matrix_reduction_parameters(false, false, false, false, false),
+		matrix_reduction_parameters(false, false, false, false, false),
 		matrix_reduction_parameters(false, false, false, false, true),
 		matrix_reduction_parameters(false, false, false, true, false),
 		matrix_reduction_parameters(false, false, false, true, true),
@@ -39,7 +39,7 @@ solve_gaussian(solver_map& m, point_map<bool>& verdicts) const
 		matrix_reduction_parameters(false, true, true, false, false),
 		matrix_reduction_parameters(false, true, true, false, true),
 		matrix_reduction_parameters(false, true, true, true, false),
-		matrix_reduction_parameters(false, true, true, true, true),*/
+		matrix_reduction_parameters(false, true, true, true, true),
 	};
 	auto points = vector<point>();
 	for(auto&c : m.cells)
@@ -55,8 +55,8 @@ solve_gaussian(solver_map& m, point_map<bool>& verdicts) const
 	auto futures = vector<future<void>>();
 	for(auto& p : parameters)
 	{
-		//futures.emplace_back(thr_pool->push([this, &matrix, &points, &verdicts, &sync, &p](int thr_num)
-		//{
+		futures.emplace_back(thr_pool->push([this, &matrix, &points, &verdicts, &sync, &p](int thr_num)
+		{
 			auto local_matrix = matrix;
 			auto local_points = points;
 			auto round_verdicts = point_map<bool>();
@@ -72,7 +72,7 @@ solve_gaussian(solver_map& m, point_map<bool>& verdicts) const
 				}());
 				verdicts[verdict.first] = verdict.second;
 			}
-		//}));
+		}));
 	}
 
 	for(auto& future : futures)
@@ -139,9 +139,6 @@ void solver_service_gaussian::get_matrix_from_map(solver_map& m, vector<point>& 
 
 void solver_service_gaussian::reduce_matrix(vector<vector<int>>& matrix, vector<point>& coordinates, point_map<bool>& allVerdicts, const matrix_reduction_parameters& parameters) const
 {
-	//puts("");
-	//dump_gaussian_matrix(matrix);
-	//dump_point_vector(coordinates);
 	if(matrix.size() == 0)
 	{
 		return;
@@ -278,11 +275,9 @@ void solver_service_gaussian::reduce_matrix(vector<vector<int>>& matrix, vector<
 			}
 		}
 	}
-	//puts("");
-	//dump_gaussian_matrix(matrix);
-	//dump_point_vector(coordinates);
-	auto cells_to_remove = vector<row_separation_result>();
-	auto row_list = vector<vector<int>>();
+
+	auto separation_results = vector<row_separation_result>();
+	auto unsolved_rows = vector<vector<int>>();
 	for(auto i = 0; i < matrix.size(); i++)
 	{
 		auto& row = matrix[i];
@@ -290,41 +285,47 @@ void solver_service_gaussian::reduce_matrix(vector<vector<int>>& matrix, vector<
 		separate_row(row, rowResults);
 		if(rowResults.size() > 0)
 		{
-			//splitsMade = true;
+			if(settings.debug_setting_1)
+			{
+				splitsMade = true;
+			}
 			for(auto& row_result: rowResults)
 			{
-				cells_to_remove.push_back(row_result);
+				separation_results.push_back(row_result);
 			}
 		}
 		else
 		{
-			row_list.push_back(row);
+			unsolved_rows.push_back(row);
 		}
 	}
 	auto columns_to_remove = google::dense_hash_set<int>();
 	columns_to_remove.set_empty_key(-1);
 	columns_to_remove.set_deleted_key(-2);
 	auto last_col = matrix[0].size() - 1;
-	for(auto& separation_result : cells_to_remove)
+	for(auto& separation_result : separation_results)
 	{
 		auto col = separation_result.column_index;
-		columns_to_remove.insert(col);
-		for(auto i = 0; i < row_list.size(); i++)
+		auto result = columns_to_remove.insert(col);
+		if(!result.second)
 		{
-			auto num = row_list[i][col];
+			continue;
+		}
+		for(auto i = 0; i < unsolved_rows.size(); i++)
+		{
+			auto num = unsolved_rows[i][col];
 			if(num != 0)
 			{
-				//matrix[i][col]
-				row_list[i][last_col] -= separation_result.constant * num;
+				unsolved_rows[i][last_col] -= separation_result.constant * num;
 			}
 		}
 		auto& pt = coordinates[col];
 		auto verdict = separation_result.constant == 1;
 		allVerdicts[pt] = verdict;
 	}
-	for(auto i = 0; i < row_list.size(); i++)
+	for(auto i = 0; i < unsolved_rows.size(); i++)
 	{
-		auto& row = row_list[i];
+		auto& row = unsolved_rows[i];
 		auto new_row = vector<int>();
 		new_row.reserve(row.size() - columns_to_remove.size());
 		for(auto j = 0; j < row.size(); j++)
@@ -334,7 +335,7 @@ void solver_service_gaussian::reduce_matrix(vector<vector<int>>& matrix, vector<
 				new_row.push_back(row[j]);
 			}
 		}
-		row_list[i] = new_row;
+		unsolved_rows[i] = new_row;
 	}
 	
 	auto new_coordinates = vector<point>();
@@ -348,7 +349,7 @@ void solver_service_gaussian::reduce_matrix(vector<vector<int>>& matrix, vector<
 	}
 	if(splitsMade)
 	{
-		reduce_matrix(row_list, new_coordinates, allVerdicts, parameters);
+		reduce_matrix(unsolved_rows, new_coordinates, allVerdicts, parameters);
 	}
 }
 

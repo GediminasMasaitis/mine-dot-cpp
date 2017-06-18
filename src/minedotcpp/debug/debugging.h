@@ -12,22 +12,35 @@ static void dump_point_vector(std::vector<minedotcpp::common::point> points)
 	for(auto i = 0; i < points.size(); ++i)
 	{
 		auto pt = points[i];
-		std::cout << i << ": [" << pt.x << "; " << pt.y << "]" << std::endl;
+		printf("%3i: [%2i;%2i]\n", i, pt.x, pt.y);
 	}
 }
 
 static void dump_gaussian_matrix(std::vector<std::vector<int>> matrix)
 {
+	auto& first_row = matrix[0];
+	auto row_size = first_row.size();
+	for(auto j = 0; j < row_size - 1; j++)
+	{
+		printf("%3i", j);
+	}
+	puts(" |  C");
+	for(auto j = 0; j < (row_size-1) * 3; j++)
+	{
+		printf("-");
+	}
+	puts("-+---");
+
 	for(auto& row : matrix)
 	{
-		for(auto j = 0; j < row.size(); j++)
+		for(auto j = 0; j < row_size; j++)
 		{
 			auto& num = row[j];
-			if(j == row.size() - 1)
+			if(j == row_size - 1)
 			{
-				printf(" | ");
+				printf(" |");
 			}
-			printf("%2i", num);
+			printf("%3i", num);
 		}
 		puts("");
 	}
@@ -37,7 +50,7 @@ static void dump_verdicts(minedotcpp::common::point_map<bool>& ps)
 {
 	for (auto& p : ps)
 	{
-		printf("[%i, %i]: %s  ", p.first.x, p.first.y, p.second ? "true" : "false");
+		printf("[%i, %i]: %s\n", p.first.x, p.first.y, p.second ? "true" : "false");
 	}
 	printf("\n");
 }
@@ -186,6 +199,11 @@ static void visualize(minedotcpp::common::map& m, std::vector<std::vector<minedo
 		std::replace(str.begin(), str.end(), 'X', ' ');
 		puts(str.c_str());
 	}
+}
+
+static void visualize(minedotcpp::common::map& m, bool external)
+{
+	visualize(m, std::vector<std::vector<minedotcpp::common::point>>(), external);
 }
 
 static void visualize(minedotcpp::game::game_map& gm, bool external)
