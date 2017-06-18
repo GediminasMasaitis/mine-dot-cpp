@@ -62,8 +62,11 @@ void solve_from_file(int argc, char* argv[])
 
 	solver_settings settings;
 	settings.trivial_solve = false;
-	settings.gaussian_solve = false;
-	settings.partial_solve = true;
+	settings.gaussian_solve = true;
+	settings.gaussian_all_stop_always = true;
+	settings.valid_combination_search_open_cl = false;
+	settings.debug_setting_1 = false;
+	//settings.partial_solve = true;
 	//settings.mine_count_ignore_completely = true;
 	//settings.guess_if_no_no_mine_verdict = false;
 	//settings.give_up_from_size = 25;
@@ -109,7 +112,7 @@ void benchmark()
 	benchmarker.on_end = on_end_impl;
 	auto settings = solver_settings();
 	settings.trivial_solve = false;
-	settings.gaussian_stop_always = true;
+	settings.gaussian_all_stop_always = true;
 	settings.separation_single_border_stop_on_no_mine_verdict = false;
 	settings.valid_combination_search_open_cl_platform_id = 0;
 	settings.guess_if_no_no_mine_verdict = true;

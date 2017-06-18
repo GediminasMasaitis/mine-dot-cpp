@@ -39,7 +39,7 @@ void solver::solve(const map& base_map, point_map<solver_result>& results) const
 	{
 		auto gaussian_service = solver_service_gaussian(settings, thr_pool);
 		gaussian_service.solve_gaussian(m, verdicts);
-		if(should_stop_solving(verdicts, settings.gaussian_stop_on_no_mine_verdict, settings.gaussian_stop_on_any_verdict, settings.gaussian_stop_always))
+		if(should_stop_solving(verdicts, settings.gaussian_all_stop_on_no_mine_verdict, settings.gaussian_all_stop_on_any_verdict, settings.gaussian_all_stop_always))
 		{
 			get_final_results(m, probabilities, verdicts, results);
 			return;

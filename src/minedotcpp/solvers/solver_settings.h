@@ -15,9 +15,13 @@ namespace minedotcpp
 			bool trivial_stop_always = false;
 
 			bool gaussian_solve = true;
-			bool gaussian_stop_on_no_mine_verdict = true;
-			bool gaussian_stop_on_any_verdict = false;
-			bool gaussian_stop_always = false;
+			bool gaussian_resolve_on_success = true;
+			bool gaussian_single_stop_on_no_mine_verdict = true;
+			bool gaussian_single_stop_on_any_verdict = false;
+			bool gaussian_single_stop_always = false;
+			bool gaussian_all_stop_on_no_mine_verdict = true;
+			bool gaussian_all_stop_on_any_verdict = false;
+			bool gaussian_all_stop_always = false;
 
 			bool separation_solve = true;
 			bool separation_order_borders_by_size = true;
