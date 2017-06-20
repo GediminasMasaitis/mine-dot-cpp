@@ -38,10 +38,10 @@ namespace minedotcpp
 					int constant;
 				};
 
-				void get_matrix_from_map(solver_map& m, std::vector<common::point>& points, bool all_undecided_coordinates_provided, std::vector<std::vector<int>>& matrix) const;
+				void get_matrix_from_map(solver_map& m, std::vector<common::point>& points, std::vector<std::vector<int>>& matrix) const;
 				void solve_gaussian_with_parameters(std::vector<std::vector<int>>& matrix, std::vector<common::point>& points, common::point_map<bool>& verdicts, const matrix_reduction_parameters& parameters) const;
 				void prepare_matrix(std::vector<std::vector<int>>& matrix) const;
-				void reduce_matrix(std::vector<std::vector<int>>& matrix, std::vector<common::point>& coordinates, const matrix_reduction_parameters& parameters) const;
+				void reduce_matrix(std::vector<std::vector<int>>& matrix, const matrix_reduction_parameters& parameters) const;
 				bool separate_row(std::vector<int>& row, google::dense_hash_map<int, int>& results) const;
 				bool find_results(std::vector<std::vector<int>>& matrix, std::vector<common::point>& coordinates, common::point_map<bool>& verdicts) const;
 			};

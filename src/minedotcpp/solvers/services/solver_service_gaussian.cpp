@@ -37,7 +37,7 @@ void solver_service_gaussian::solve_gaussian(solver_map& m, point_map<bool>& ver
 	};
 	auto points = vector<point>();
 	auto matrix = vector<vector<int>>();
-	get_matrix_from_map(m, points, true, matrix);
+	get_matrix_from_map(m, points, matrix);
 	//mutex sync;
 	//auto futures = vector<future<void>>();
 	for(auto& p : parameters)
@@ -76,27 +76,32 @@ void solver_service_gaussian::solve_gaussian(solver_map& m, point_map<bool>& ver
 	//}
 }
 
-void solver_service_gaussian::get_matrix_from_map(solver_map& m, vector<point>& points, bool all_undecided_coordinates_provided, vector<vector<int>>& matrix) const
+void solver_service_gaussian::get_matrix_from_map(solver_map& m, vector<point>& points, vector<vector<int>>& matrix) const
 {
-	for(auto&c : m.cells)
-	{
-		if(c.state == cell_state_filled)
-		{
-			points.push_back(c.pt);
-		}
-	}
 	auto hint_points = point_set();
 	auto indices = point_map<int>();
-	for(auto i = 0; i < points.size(); i++)
+
+	auto current_index = 0;
+	for(auto&c : m.cells)
 	{
-		auto& pt = points[i];
-		auto& entry = m.neighbour_cache_get(pt);
-		auto& empty = entry.by_state[cell_state_empty];
-		for(auto& c : empty)
+		auto& pt = c.pt;
+		if(c.state != cell_state_filled)
 		{
-			hint_points.insert(c->pt);
+			continue;
 		}
-		indices[pt] = i;
+		auto& entry = m.neighbour_cache_get(pt);
+		auto& empty_neighbours = entry.by_state[cell_state_empty];
+		//if(empty_neighbours.size() == 0)
+		//{
+		//	continue;
+		//}
+		points.push_back(pt);
+		
+		for(auto& empty_neighbour : empty_neighbours)
+		{
+			hint_points.insert(empty_neighbour->pt);
+		}
+		indices[pt] = current_index++;
 	}
 
 	auto hint_cells = vector<cell>();
@@ -127,7 +132,7 @@ void solver_service_gaussian::get_matrix_from_map(solver_map& m, vector<point>& 
 		row[row.size() - 1] = remaining_hint;
 		matrix.push_back(row);
 	}
-	if(all_undecided_coordinates_provided && m.remaining_mine_count != -1)
+	if(m.remaining_mine_count != -1)
 	{
 		auto row = vector<int>(points.size() + 1);
 		for(auto i = 0; i < points.size(); i++)
@@ -152,7 +157,7 @@ void solver_service_gaussian::solve_gaussian_with_parameters(vector<vector<int>>
 
 		if(!parameters.skip_reduction)
 		{
-			reduce_matrix(matrix, coordinates, parameters);
+			reduce_matrix(matrix, parameters);
 		}
 
 		found_results = find_results(matrix, coordinates, verdicts);
@@ -235,7 +240,7 @@ void solver_service_gaussian::prepare_matrix(vector<vector<int>>& matrix) const
 	});
 }
 
-void solver_service_gaussian::reduce_matrix(vector<vector<int>>& matrix, vector<point>& coordinates, const matrix_reduction_parameters& parameters) const
+void solver_service_gaussian::reduce_matrix(vector<vector<int>>& matrix, const matrix_reduction_parameters& parameters) const
 {
 	auto rows = static_cast<int>(matrix.size());
 	auto cols = static_cast<int>(matrix[0].size());
