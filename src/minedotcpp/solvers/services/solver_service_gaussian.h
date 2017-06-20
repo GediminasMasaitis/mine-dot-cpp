@@ -42,7 +42,7 @@ namespace minedotcpp
 				void solve_gaussian_with_parameters(std::vector<std::vector<int>>& matrix, std::vector<common::point>& points, common::point_map<bool>& verdicts, const matrix_reduction_parameters& parameters) const;
 				void prepare_matrix(std::vector<std::vector<int>>& matrix) const;
 				void reduce_matrix(std::vector<std::vector<int>>& matrix, std::vector<common::point>& coordinates, const matrix_reduction_parameters& parameters) const;
-				void separate_row(std::vector<int>& row, std::vector<row_separation_result>& results) const;
+				bool separate_row(std::vector<int>& row, google::dense_hash_map<int, int>& results) const;
 				bool find_results(std::vector<std::vector<int>>& matrix, std::vector<common::point>& coordinates, common::point_map<bool>& verdicts) const;
 			};
 		}

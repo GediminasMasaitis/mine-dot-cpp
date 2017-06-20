@@ -36,13 +36,6 @@ void solver_service_gaussian::solve_gaussian(solver_map& m, point_map<bool>& ver
 		matrix_reduction_parameters(false, true, true, true, true),     // 11.7  28.8*/
 	};
 	auto points = vector<point>();
-	for(auto&c : m.cells)
-	{
-		if(c.state == cell_state_filled)
-		{
-			points.push_back(c.pt);
-		}
-	}
 	auto matrix = vector<vector<int>>();
 	get_matrix_from_map(m, points, true, matrix);
 	//mutex sync;
@@ -85,6 +78,13 @@ void solver_service_gaussian::solve_gaussian(solver_map& m, point_map<bool>& ver
 
 void solver_service_gaussian::get_matrix_from_map(solver_map& m, vector<point>& points, bool all_undecided_coordinates_provided, vector<vector<int>>& matrix) const
 {
+	for(auto&c : m.cells)
+	{
+		if(c.state == cell_state_filled)
+		{
+			points.push_back(c.pt);
+		}
+	}
 	auto hint_points = point_set();
 	auto indices = point_map<int>();
 	for(auto i = 0; i < points.size(); i++)
@@ -362,63 +362,47 @@ void solver_service_gaussian::reduce_matrix(vector<vector<int>>& matrix, vector<
 
 bool solver_service_gaussian::find_results(vector<vector<int>>& matrix, vector<point>& coordinates, point_map<bool>& verdicts) const
 {
-	auto found_new_results = false;
-	auto separation_results = vector<row_separation_result>();
+	auto separation_results = google::dense_hash_map<int, int>();
+	separation_results.set_empty_key(-1);
+	separation_results.set_deleted_key(-2);
 	auto unsolved_rows = vector<vector<int>>();
 	for(auto i = 0; i < matrix.size(); i++)
 	{
 		auto& row = matrix[i];
-		auto rowResults = vector<row_separation_result>();
-		separate_row(row, rowResults);
-		if(rowResults.size() > 0)
-		{
-			if(settings.debug_setting_1)
-			{
-				found_new_results = true;
-			}
-			for(auto& row_result : rowResults)
-			{
-				separation_results.push_back(row_result);
-			}
-		}
-		else
+		auto separation_success = separate_row(row, separation_results);
+		if(!separation_success)
 		{
 			unsolved_rows.push_back(row);
 		}
 	}
-
-	auto columns_to_remove = google::dense_hash_set<int>();
-	columns_to_remove.set_empty_key(-1);
-	columns_to_remove.set_deleted_key(-2);
+	if(separation_results.size() == 0)
+	{
+		return false;
+	}
 	auto last_col = matrix[0].size() - 1;
 	for(auto& separation_result : separation_results)
 	{
-		auto col = separation_result.column_index;
-		auto result = columns_to_remove.insert(col);
-		if(!result.second)
-		{
-			continue;
-		}
+		auto& col = separation_result.first;
 		for(auto i = 0; i < unsolved_rows.size(); i++)
 		{
 			auto num = unsolved_rows[i][col];
 			if(num != 0)
 			{
-				unsolved_rows[i][last_col] -= separation_result.constant * num;
+				unsolved_rows[i][last_col] -= separation_result.second * num;
 			}
 		}
 		auto& pt = coordinates[col];
-		auto verdict = separation_result.constant == 1;
+		auto verdict = separation_result.second == 1;
 		verdicts[pt] = verdict;
 	}
 	for(auto i = 0; i < unsolved_rows.size(); i++)
 	{
 		auto& row = unsolved_rows[i];
 		auto new_row = vector<int>();
-		new_row.reserve(row.size() - columns_to_remove.size());
+		new_row.reserve(row.size() - separation_results.size());
 		for(auto j = 0; j < row.size(); j++)
 		{
-			if(columns_to_remove.find(j) == columns_to_remove.end())
+			if(separation_results.find(j) == separation_results.end())
 			{
 				new_row.push_back(row[j]);
 			}
@@ -427,20 +411,20 @@ bool solver_service_gaussian::find_results(vector<vector<int>>& matrix, vector<p
 	}
 
 	auto remaining_coordinates = vector<point>();
-	remaining_coordinates.reserve(coordinates.size() - columns_to_remove.size());
+	remaining_coordinates.reserve(coordinates.size() - separation_results.size());
 	for(auto i = 0; i < coordinates.size(); i++)
 	{
-		if(columns_to_remove.find(i) == columns_to_remove.end())
+		if(separation_results.find(i) == separation_results.end())
 		{
 			remaining_coordinates.push_back(coordinates[i]);
 		}
 	}
 	matrix = unsolved_rows;
 	coordinates = remaining_coordinates;
-	return found_new_results;
+	return true;
 }
 
-void solver_service_gaussian::separate_row(vector<int>& row, vector<row_separation_result>& results) const
+bool solver_service_gaussian::separate_row(vector<int>& row, google::dense_hash_map<int, int>& results) const
 {
 	auto constantIndex = row.size() - 1;
 	auto constant = row[constantIndex];
@@ -464,28 +448,30 @@ void solver_service_gaussian::separate_row(vector<int>& row, vector<row_separati
 		}
 	}
 
-	if(constant == positiveSum || constant == negativeSum)
+	if(constant != positiveSum && constant != negativeSum)
 	{
-		int forPositive;
-		int forNegative;
-		if(constant == positiveSum)
-		{
-			forPositive = 1;
-			forNegative = 0;
-		}
-		else
-		{
-			forPositive = 0;
-			forNegative = 1;
-		}
-		for(auto i = 0; i < row.size() - 1; i++)
-		{
-			if(row[i] != 0)
-			{
-				auto newConstant = row[i] > 0 ? forPositive : forNegative;
-				results.emplace_back(i, newConstant);
-			}
-		}
-		//splitsMade = true;
+		return false;
 	}
+
+	int forPositive;
+	int forNegative;
+	if(constant == positiveSum)
+	{
+		forPositive = 1;
+		forNegative = 0;
+	}
+	else
+	{
+		forPositive = 0;
+		forNegative = 1;
+	}
+	for(auto i = 0; i < row.size() - 1; i++)
+	{
+		if(row[i] != 0)
+		{
+			auto newConstant = row[i] > 0 ? forPositive : forNegative;
+			results.emplace(i, newConstant);
+		}
+	}
+	return true;
 }
