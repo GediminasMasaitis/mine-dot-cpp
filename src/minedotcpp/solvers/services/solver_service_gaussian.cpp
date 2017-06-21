@@ -80,7 +80,7 @@ void solver_service_gaussian::get_matrix_from_map(solver_map& m, vector<point>& 
 {
 	auto hint_points = point_set();
 	auto indices = point_map<int>();
-
+	auto has_mine_count = m.remaining_mine_count != -1;
 	auto current_index = 0;
 	for(auto&c : m.cells)
 	{
@@ -91,10 +91,10 @@ void solver_service_gaussian::get_matrix_from_map(solver_map& m, vector<point>& 
 		}
 		auto& entry = m.neighbour_cache_get(pt);
 		auto& empty_neighbours = entry.by_state[cell_state_empty];
-		//if(empty_neighbours.size() == 0)
-		//{
-		//	continue;
-		//}
+		if(!has_mine_count && empty_neighbours.size() == 0)
+		{
+			continue;
+		}
 		points.push_back(pt);
 		
 		for(auto& empty_neighbour : empty_neighbours)
@@ -132,7 +132,7 @@ void solver_service_gaussian::get_matrix_from_map(solver_map& m, vector<point>& 
 		row[row.size() - 1] = remaining_hint;
 		matrix.push_back(row);
 	}
-	if(m.remaining_mine_count != -1)
+	if(has_mine_count)
 	{
 		auto row = vector<int>(points.size() + 1);
 		for(auto i = 0; i < points.size(); i++)
