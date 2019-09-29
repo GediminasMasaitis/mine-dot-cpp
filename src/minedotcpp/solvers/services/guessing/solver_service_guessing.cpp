@@ -1,5 +1,5 @@
-#include "../../common/point.h"
-#include "../solver_map.h"
+#include "../../../common/point.h"
+#include "../../solver_map.h"
 #include "solver_service_guessing.h"
 
 using namespace minedotcpp;

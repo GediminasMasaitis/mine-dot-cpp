@@ -18,6 +18,33 @@ using namespace std;
 using namespace minedotcpp::common;
 using namespace minedotcpp::solvers;
 
+void list_open_cl_devices()
+{
+	auto platforms = vector<cl::Platform>();
+	cl::Platform::get(&platforms);
+	for(auto i = 0; i < platforms.size(); ++i)
+	{
+		auto& platform = platforms[i];
+		string platform_name;
+		string platform_vendor;
+		platform.getInfo(CL_PLATFORM_NAME, &platform_name);
+		platform.getInfo(CL_PLATFORM_VENDOR, &platform_vendor);
+
+		cout << i << ": " << platform_vendor << " " << platform_name << endl;
+
+		auto devices = vector<cl::Device>();
+		platform.getDevices(CL_DEVICE_TYPE_ALL, &devices);
+
+		for(auto j = 0; j < devices.size(); ++j)
+		{
+			auto& device = devices[j];
+			string device_name;
+			device.getInfo(CL_DEVICE_NAME, &device_name);
+			cout << "  " << j << ": " << device_name << endl;
+		}
+	}
+}
+
 void solve_from_file(int argc, char* argv[])
 {
 	minedotcpp::mapio::text_map_parser parser;
@@ -62,11 +89,18 @@ void solve_from_file(int argc, char* argv[])
 
 	solver_settings settings;
 	settings.trivial_solve = false;
-	settings.gaussian_solve = true;
-	settings.gaussian_all_stop_always = true;
-	settings.valid_combination_search_open_cl = false;
-	settings.debug_setting_1 = false;
-	//settings.partial_solve = true;
+	settings.gaussian_solve = false;
+	//settings.gaussian_all_stop_always = true;
+	//settings.valid_combination_search_open_cl = false;
+	//settings.debug_setting_1 = false;
+	settings.partial_solve = false;
+	settings.give_up_from_size = 100;
+	settings.valid_combination_search_multithread = true;
+	settings.valid_combination_search_open_cl_allow_loop_break = false;
+	settings.valid_combination_search_open_cl = true;
+	settings.valid_combination_search_open_cl_platform_id = 0;
+	settings.valid_combination_search_open_cl_device_id = 0;
+
 	//settings.mine_count_ignore_completely = true;
 	//settings.guess_if_no_no_mine_verdict = false;
 	//settings.give_up_from_size = 25;
@@ -180,9 +214,10 @@ int main(int argc, char* argv[])
 	GetWindowRect(wh, &rect);
 	MoveWindow(wh, rect.left, 50, 1300, 950, TRUE);
 #endif
+	list_open_cl_devices();
 	//pattern_search_test();
-	//solve_from_file(argc, argv);
-	benchmark();
+	solve_from_file(argc, argv);
+	//benchmark();
 	//test_global_api();
 	cout << "Press any key to continue" << endl;
 	getc(stdin);

@@ -1,11 +1,14 @@
-#include "../solver_map.h"
-#include "../border.h"
-#include "../../debug/debugging.h"
 #include "solver_service_separation.h"
-#include <queue>
 #include "solver_service_separation_mine_counts.h"
 #include "solver_service_separation_combination_finding.h"
-#include "../../common/common_functions.h"
+
+#include "../../solver_map.h"
+#include "../../border.h"
+
+#include "../../../debug/debugging.h"
+#include "../../../common/common_functions.h"
+
+#include <queue>
 
 using namespace minedotcpp;
 using namespace solvers;

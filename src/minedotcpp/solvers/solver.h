@@ -5,7 +5,7 @@
 #include "solver_result.h"
 #include "solver_settings.h"
 #include "services/solver_service_base.h"
-#include "services/solver_service_separation.h"
+#include "services/separation/solver_service_separation.h"
 
 
 namespace minedotcpp

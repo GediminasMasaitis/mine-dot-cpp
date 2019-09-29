@@ -1,7 +1,7 @@
 #include "solver_service_gaussian.h"
-#include "../../debug/debugging.h"
-#include "../matrix_reduction_parameters.h"
-#include "../../common/common_functions.h"
+#include "../../../debug/debugging.h"
+#include "../../matrix_reduction_parameters.h"
+#include "../../../common/common_functions.h"
 
 using namespace minedotcpp;
 using namespace common;

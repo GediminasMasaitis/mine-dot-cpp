@@ -1,9 +1,9 @@
 #include "solver.h"
 #include "solver_map.h"
-#include "services/solver_service_trivial.h"
-#include "services/solver_service_separation.h"
-#include "services/solver_service_guessing.h"
-#include "services/solver_service_gaussian.h"
+#include "services/trivial/solver_service_trivial.h"
+#include "services/separation/solver_service_separation.h"
+#include "services/guessing/solver_service_guessing.h"
+#include "services/gaussian/solver_service_gaussian.h"
 
 using namespace minedotcpp;
 using namespace solvers;

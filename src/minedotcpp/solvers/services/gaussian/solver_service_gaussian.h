@@ -1,8 +1,8 @@
 #pragma once
-#include "../solver_map.h"
-#include "../solver_settings.h"
-#include "solver_service_base.h"
-#include "../matrix_reduction_parameters.h"
+#include "../../solver_map.h"
+#include "../../solver_settings.h"
+#include "../solver_service_base.h"
+#include "../../matrix_reduction_parameters.h"
 #include <vector>
 
 namespace minedotcpp

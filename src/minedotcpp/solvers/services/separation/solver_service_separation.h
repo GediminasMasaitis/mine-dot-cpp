@@ -1,10 +1,10 @@
 #pragma once
-#include "../../common/map.h"
-#include "../solver_map.h"
-#include "../solver_settings.h"
-#include "../border.h"
-#include "../partial_border_data.h"
-#include "solver_service_base.h"
+#include "../../../common/map.h"
+#include "../../solver_map.h"
+#include "../../solver_settings.h"
+#include "../../border.h"
+#include "../../partial_border_data.h"
+#include "../solver_service_base.h"
 #include <mutex>
 #include "solver_service_separation_combination_finding.h"
 

@@ -1,8 +1,8 @@
 #pragma once
-#include "../solver_map.h"
-#include "../solver_settings.h"
-#include "../border.h"
-#include "solver_service_base.h"
+#include "../../solver_map.h"
+#include "../../solver_settings.h"
+#include "../../border.h"
+#include "../solver_service_base.h"
 #include <mutex>
 #ifdef ENABLE_OPEN_CL
 #define CL_USE_DEPRECATED_OPENCL_1_2_APIS

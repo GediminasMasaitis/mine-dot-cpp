@@ -1,7 +1,7 @@
 #pragma once
-#include "../solver_map.h"
-#include "../solver_settings.h"
-#include "solver_service_base.h"
+#include "../../solver_map.h"
+#include "../../solver_settings.h"
+#include "../solver_service_base.h"
 
 namespace minedotcpp
 {

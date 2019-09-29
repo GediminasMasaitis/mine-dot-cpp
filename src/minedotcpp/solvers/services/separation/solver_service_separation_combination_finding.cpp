@@ -1,6 +1,6 @@
-#include "../solver_map.h"
-#include "../border.h"
-#include "../../debug/debugging.h"
+#include "../../solver_map.h"
+#include "../../border.h"
+#include "../../../debug/debugging.h"
 #include <thread>
 #include <mutex>
 #include <queue>
@@ -108,7 +108,8 @@ __kernel void find_combination(const unsigned char map_size, const __constant un
 
 void solver_service_separation_combination_finding::cl_validate_predictions(unsigned char map_size, vector<unsigned char>& map, vector<unsigned int>& results, unsigned int total) const
 {
-	results.resize(1024 * 2, -1);
+	const auto max_result_size = 1024 * 2;
+	results.resize(max_result_size, -1);
 	cl_int err;
 
 	int result_count = 0;
@@ -153,7 +154,7 @@ void solver_service_separation_combination_finding::cl_validate_predictions(unsi
 	//cl::finish();
 }
 #endif
-void solver_service_separation_combination_finding::validate_predictions(const unsigned char map_size, vector<unsigned char>& m, vector<unsigned int>& results, const unsigned int min, const unsigned int max, mutex* sync) const
+void solver_service_separation_combination_finding::validate_predictions(const unsigned char map_size, vector<unsigned char>& map, vector<unsigned int>& results, const unsigned int min, const unsigned int max, mutex* sync) const
 {
 	for (unsigned int prediction = min; prediction < max; prediction++)
 	{
@@ -162,13 +163,13 @@ void solver_service_separation_combination_finding::validate_predictions(const u
 		{
 			unsigned char neighbours_with_mine = 0;
 			const unsigned short header_offset = i * 9;
-			const unsigned char header = m[header_offset];
+			const unsigned char header = map[header_offset];
 			const unsigned char neighbour_count = header & 0x0F;
 			const unsigned char hint = header >> 4;
 			for (unsigned char j = 1; j <= neighbour_count; j++)
 			{
-				unsigned char neighbour = m[header_offset + j];
-				unsigned char flag = neighbour & 0x03;
+				const unsigned char neighbour = map[header_offset + j];
+				const unsigned char flag = neighbour & 0x03;
 				switch (flag)
 				{
 				case 1:
@@ -324,34 +325,34 @@ void solver_service_separation_combination_finding::find_valid_border_cell_combi
 {
 	auto border_length = border.cells.size();
 	auto total = static_cast<unsigned int>(1 << border_length);
-	auto m = vector<unsigned char>();
+	auto combination_search_map = vector<unsigned char>();
 	auto results = vector<unsigned int>();
 	unsigned char map_size;
-	get_combination_search_map(solver_map, border, m, map_size);
+	get_combination_search_map(solver_map, border, combination_search_map, map_size);
 	auto all_remaining_cells_in_border = solver_map.undecided_count == border_length;
 	//cout << "Border size: " << border_length << endl;
 	//cout << "All remaining mines in border" << endl;
 #ifdef ENABLE_OPEN_CL
 	if (settings.valid_combination_search_open_cl && border_length >= settings.valid_combination_search_open_cl_use_from_size)
 	{
-		cl_validate_predictions(map_size, m, results, total);
+		cl_validate_predictions(map_size, combination_search_map, results, total);
 	}
 	else
 #endif
-		if (settings.valid_combination_search_multithread && border_length >= settings.valid_combination_search_multithread_use_from_size)
-		{
-			thr_pool_validate_predictions(map_size, m, results, total);
-		}
-		else
-		{
-			validate_predictions(map_size, m, results, 0, total, nullptr);
-		}
+	if (settings.valid_combination_search_multithread && border_length >= settings.valid_combination_search_multithread_use_from_size)
+	{
+		thr_pool_validate_predictions(map_size, combination_search_map, results, total);
+	}
+	else
+	{
+		validate_predictions(map_size, combination_search_map, results, 0, total, nullptr);
+	}
 
-	for (auto& prediction : results)
+	for (const auto& prediction : results)
 	{
 		if (solver_map.remaining_mine_count > 0)
 		{
-			auto bits_set = find_hamming_weight(prediction);
+			const auto bits_set = find_hamming_weight(prediction); // use __popcnt(int) ?
 			if (bits_set > solver_map.remaining_mine_count)
 			{
 				continue;
@@ -369,7 +370,7 @@ void solver_service_separation_combination_finding::find_valid_border_cell_combi
 			auto& pt = border.cells[j].pt;
 			auto has_mine = (prediction & (1 << j)) > 0;
 			predictions[pt] = has_mine;
-			if(has_mine)
+			if (has_mine)
 			{
 				++mine_count;
 			}
