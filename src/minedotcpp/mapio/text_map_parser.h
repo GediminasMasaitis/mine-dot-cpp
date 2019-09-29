@@ -10,8 +10,8 @@ namespace minedotcpp
 		{
 		public:
 			void parse(char* str, common::map& target_map) const;
-			void parse(std::string str, common::map& target_map) const;
-			void parse(std::istream& is, common::map& target_map) const;
+			void parse(const std::string& str, common::map& target_map) const;
+			void parse(std::istream& input_stream, common::map& target_map) const;
 		};
 	}
 }
