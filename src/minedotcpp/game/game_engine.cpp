@@ -1,25 +1,27 @@
 #include "game_engine.h"
 
-inline void minedotcpp::game::game_engine::start_with_mine_density(int width, int height, minedotcpp::common::point starting_position, bool guarantee_opening, double mine_density)
+minedotcpp::game::game_result minedotcpp::game::game_engine::start_with_mine_density(int width, int height, minedotcpp::common::point starting_position, bool guarantee_opening, double mine_density)
 {
 	gm = minedotcpp::game::game_map();
 	gm.init(width, height, -1, common::cell_state_filled);
 	generator->generate_with_mine_density(gm, starting_position, guarantee_opening, mine_density);
 	if(starting_position.x > -1 && starting_position.y > -1)
 	{
-		open_cell(starting_position);
+		return open_cell(starting_position);
 	}
+	return move_correct;
 }
 
-void minedotcpp::game::game_engine::start_with_mine_count(int width, int height, common::point starting_position, bool guarantee_opening, int mine_count)
+minedotcpp::game::game_result minedotcpp::game::game_engine::start_with_mine_count(int width, int height, common::point starting_position, bool guarantee_opening, int mine_count)
 {
 	gm = game_map();
 	gm.init(width, height, -1, common::cell_state_filled);
 	generator->generate_with_mine_count(gm, starting_position, guarantee_opening, mine_count);
 	if (starting_position.x > -1 && starting_position.y > -1)
 	{
-		open_cell(starting_position);
+		return open_cell(starting_position);
 	}
+	return move_correct;
 }
 
 void minedotcpp::game::game_engine::set_flag(common::point pt, common::cell_param flag)

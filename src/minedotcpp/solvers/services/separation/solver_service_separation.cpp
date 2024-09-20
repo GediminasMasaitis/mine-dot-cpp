@@ -16,6 +16,8 @@ using namespace services;
 using namespace common;
 using namespace std;
 
+
+
 void solver_service_separation::get_pattern(solver_map& m) const
 {
 	border common_border;
@@ -102,7 +104,19 @@ void solver_service_separation::get_pattern(solver_map& m) const
 	visualize(final_map, { final_border }, false);
 }
 
-void solver_service_separation::solve_separation(solver_map& m, point_map<double>& probabilities, point_map<bool>& verdicts) const
+ZobristKey CalculateKey(const border& border)
+{
+	ZobristKey key = 0;
+	for (auto& cell : border.cells)
+	{
+		const auto index = cell.state == (cell_state_filled | cell_flag_has_mine) ? 1 : 0;
+		auto cellKey = ZobristKeys.Keys[cell.pt.x][cell.pt.y][index];
+		key ^= cellKey;
+	}
+	return key;
+}
+
+void solver_service_separation::solve_separation(solver_map& m, point_map<double>& probabilities, point_map<bool>& verdicts)
 {
 	border common_border;
 	vector<border> original_borders;
@@ -129,7 +143,19 @@ void solver_service_separation::solve_separation(solver_map& m, point_map<double
 
 	for (auto& b : original_borders)
 	{
-		solve_border(m, b, true, borders);
+		//const ZobristKey key = CalculateKey(b);
+		//const auto it = Table.find(key);
+		//if(it != Table.end())
+		//{
+		//	b.probabilities = it->second;
+		//	get_verdicts_from_probabilities(b.probabilities, b.verdicts);
+		//	m.set_cells_by_verdicts(b.verdicts);
+		//}
+		//else
+		//{
+			solve_border(m, b, true, borders);
+		//}
+		
 		for (auto& borderVerdict : b.verdicts)
 		{
 			verdicts[borderVerdict.first] = borderVerdict.second;
@@ -138,6 +164,14 @@ void solver_service_separation::solve_separation(solver_map& m, point_map<double
 		{
 			probabilities[probability.first] = probability.second;
 		}
+
+		//if (it == Table.end())
+		//{
+		//	Table[key] = b.probabilities;
+		//	auto key2 = CalculateKey(b);
+		//	Table[key2] = b.probabilities;
+		//}
+
 		if(should_stop_solving(verdicts, settings.separation_single_border_stop_on_no_mine_verdict, settings.separation_single_border_stop_on_any_verdict, settings.separation_single_border_stop_always))
 		{
 			return;
@@ -236,14 +270,43 @@ void solver_service_separation::solve_border(solver_map& m, border& b, bool allo
 	}
 }
 
+class PointUse
+{
+public:
+	point pt;
+	int use_count;
+};
+
 void solver_service_separation::try_solve_border_by_partial_borders(solver_map& m, border& b) const
 {
 	vector<partial_border_data> checked_partial_borders;
+
+	point_map<PointUse> cell_use_count{};
+	point_set remaining_pts{};
 	for (auto i = 0; i < b.cells.size(); i++)
 	{
 		auto target_coordinate = b.cells[i].pt;
+		cell_use_count[target_coordinate].pt = target_coordinate;
+		cell_use_count[target_coordinate].use_count = 0;
+		remaining_pts.insert(target_coordinate);
+	}
+
+	//for (auto i = 0; i < b.cells.size(); i++)
+	while (!remaining_pts.empty())
+	{
+		PointUse min = cell_use_count[*remaining_pts.begin()];
+		for(auto& candidate : remaining_pts)
+		{
+			if(cell_use_count[candidate].use_count < min.use_count)
+			{
+				min = cell_use_count[candidate];
+			}
+		}
+		auto target_coordinate = min.pt;
+		remaining_pts.erase(target_coordinate);
+		
 		partial_border_data border_data;
-		get_partial_border(b, m, target_coordinate, border_data);
+		get_partial_border(b, m, target_coordinate, border_data);		
 		//visualize(border_data.partial_map, { border_data.partial_border }, true);
 		partial_border_data previous_border_data;
 		auto superset = false;
@@ -273,6 +336,11 @@ void solver_service_separation::try_solve_border_by_partial_borders(solver_map& 
 			continue;
 		}
 
+		for (auto& cell : border_data.partial_border.cells)
+		{
+			cell_use_count[cell.pt].use_count++;
+		}
+		
 		vector<border> temp;
 		solve_border(border_data.partial_map, border_data.partial_border, false, temp);
 		checked_partial_borders.push_back(border_data);
@@ -292,23 +360,46 @@ void solver_service_separation::try_solve_border_by_partial_borders(solver_map& 
 						break;
 					}
 				}
-				if (cell_index <= i)
+				/*if (cell_index <= i)
 				{
 					i--;
-				}
+				}*/
 				b.cells.erase(b.cells.begin() + cell_index);
+				remaining_pts.erase(cell.pt);
 			}
 			if (should_stop_solving(b.verdicts, settings.partial_single_stop_on_no_mine_verdict, settings.partial_single_stop_on_any_verdict, false))
 			{
 				return;
 			}
 		}
-		if (settings.partial_set_probability_guesses && verdicts.find(target_coordinate) == verdicts.end())
+	}
+	
+	
+	if (settings.partial_set_probability_guesses)
+	{
+		for (auto i = 0; i < b.cells.size(); i++)
 		{
-			auto it = border_data.partial_border.probabilities.find(target_coordinate);
-			if (it != border_data.partial_border.probabilities.end())
+			const auto pt = b.cells[i].pt;
+			if (b.verdicts.find(pt) != b.verdicts.end())
 			{
-				b.probabilities[target_coordinate] = it->second;
+				continue;
+			}
+
+			double sum = 0;
+			double count = 0;
+			for (auto& partial : checked_partial_borders)
+			{
+				auto it = partial.partial_border.probabilities.find(pt);
+				if (it != partial.partial_border.probabilities.end())
+				{
+					sum += it->second;
+					count++;
+					//b.probabilities[pt] = it->second;
+				}
+			}
+			if(count > 0)
+			{
+				b.probabilities[pt] = sum / count;
 			}
 		}
 	}

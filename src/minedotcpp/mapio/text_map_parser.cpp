@@ -7,7 +7,7 @@ using namespace std;
 using namespace minedotcpp::common;
 using namespace minedotcpp::mapio;
 
-void remove_chars_from_string(string& str, char* chars_to_remove)
+void remove_chars_from_string(string& str, const char* chars_to_remove)
 {
 	for(unsigned int i = 0; i < strlen(chars_to_remove); ++i)
 	{

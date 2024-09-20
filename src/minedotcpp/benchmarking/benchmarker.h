@@ -13,7 +13,7 @@ namespace minedotcpp
 
 			game::game_map_generator generator;
 
-			void (*on_iteration)(int benchmark_index, common::map& m, common::point_map<solvers::solver_result>& results, int iteration, int duration) = nullptr;
+			void (*on_iteration)(int benchmark_index, common::map& m, common::point_map<solvers::solver_result>& results, int iteration, size_t duration) = nullptr;
 			void (*on_end)(benchmark_entry& entry) = nullptr;
 
 			explicit benchmarker(std::mt19937& mt)

@@ -37,7 +37,7 @@ namespace minedotcpp
 			bool partial_all_stop_on_any_verdict = false;
 			bool partial_stop_always = false;
 			int partial_solve_from_size = 24;
-			int partial_optimal_size = 14;
+			int partial_optimal_size = 20;
 			bool partial_set_probability_guesses = true;
 
 			bool resplit_on_partial_verdict = true;
@@ -50,14 +50,15 @@ namespace minedotcpp
 			int give_up_from_size = 28;
 
 			bool valid_combination_search_open_cl = true;
-			bool valid_combination_search_open_cl_allow_loop_break = true;
+			bool valid_combination_search_open_cl_allow_loop_break = false;
 			int valid_combination_search_open_cl_use_from_size = 16;
-			int valid_combination_search_open_cl_max_batch_size = 20;
-			int valid_combination_search_open_cl_platform_id = 1;
+			int valid_combination_search_open_cl_max_batch_size = 31;
+			int valid_combination_search_open_cl_platform_id = 0;
 			int valid_combination_search_open_cl_device_id = 0;
 
 			bool valid_combination_search_multithread = true;
 			int valid_combination_search_multithread_use_from_size = 8;
+			int valid_combination_search_multithread_thread_count = 16;
 
 			int variable_mine_count_borders_probabilities_multithread_use_from = 128;
 			int variable_mine_count_borders_probabilities_give_up_from = 131072;

@@ -17,13 +17,20 @@ void minedotcpp::benchmarking::benchmarker::benchmark_multiple(solvers::solver& 
 
 void minedotcpp::benchmarking::benchmarker::benchmark(int benchmark_index, solvers::solver& s, int width, int height, int mine_count, benchmark_entry& entry)
 {
-	common::point starting_pt = {width >> 1, height >> 1};
+	s.ResetTable();
+	common::point starting_pt = {0,0};
 	auto engine = game::game_engine(generator);
-	engine.start_with_mine_count(width, height, starting_pt, true, mine_count);
-	/*if (benchmark_index == 482)
+	auto initial_result = engine.start_with_mine_count(width, height, starting_pt, false, mine_count);
+	if(initial_result == game::game_won)
 	{
-		visualize(engine.gm, false);
-	}*/
+		entry.solved = true;
+		if (on_end != nullptr)
+		{
+			on_end(entry);
+		}
+		return;
+	}
+	
 	auto clock = std::chrono::high_resolution_clock();
 	auto iteration = 0;
 	while (true)
@@ -35,14 +42,14 @@ void minedotcpp::benchmarking::benchmarker::benchmark(int benchmark_index, solve
 		s.solve(m, results);
 		auto end_time = clock.now();
 		auto diff = end_time - start_time;
-		auto us = static_cast<int>(std::chrono::duration_cast<std::chrono::microseconds>(diff).count());
+		auto ns = static_cast<size_t>(std::chrono::duration_cast<std::chrono::nanoseconds>(diff).count());
 		if (on_iteration != nullptr)
 		{
-			on_iteration(benchmark_index, m, results, iteration++, us);
+			on_iteration(benchmark_index, m, results, iteration++, ns);
 		}
 
-		entry.solving_durations.push_back(us);
-		entry.total_duration += us;
+		entry.solving_durations.push_back(ns);
+		entry.total_duration += ns;
 
 		for (auto& res : results)
 		{

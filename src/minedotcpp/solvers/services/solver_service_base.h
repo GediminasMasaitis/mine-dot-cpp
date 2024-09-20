@@ -13,7 +13,7 @@ namespace minedotcpp
 			class solver_service_base
 			{
 			public:
-				const solver_settings settings;
+				solver_settings settings;
 
 				explicit solver_service_base(const solver_settings& settings, ctpl::thread_pool* thr_pool)
 					: settings(settings)

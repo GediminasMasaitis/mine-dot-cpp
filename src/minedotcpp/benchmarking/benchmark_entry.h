@@ -10,8 +10,8 @@ namespace minedotcpp
 		{
 		public:
 			int map_index;
-			std::vector<int> solving_durations = std::vector<int>();
-			int total_duration = 0;
+			std::vector<size_t> solving_durations = std::vector<size_t>();
+			size_t total_duration = 0;
 			bool solved = false;
 		};
 	}

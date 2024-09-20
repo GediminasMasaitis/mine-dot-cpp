@@ -4,6 +4,7 @@
 #include "../../border.h"
 #include "../solver_service_base.h"
 #include <mutex>
+#include <array>
 #ifdef ENABLE_OPEN_CL
 #define CL_USE_DEPRECATED_OPENCL_1_2_APIS
 #include <CL/cl.hpp>
@@ -15,7 +16,9 @@ namespace minedotcpp
 	{
 		namespace services
 		{
-			class solver_service_separation_combination_finding : private solver_service_base
+			using ClResultArr = std::array<unsigned int, 1024 * 1024 * 64>;
+			
+			class solver_service_separation_combination_finding : public solver_service_base
 			{
 			public:
 				explicit solver_service_separation_combination_finding(const solver_settings& settings, ctpl::thread_pool* thr_pool)
@@ -33,8 +36,10 @@ namespace minedotcpp
 				cl::Context cl_context;
 				cl::Program cl_find_combination_program;
 
+				
+				
 				void cl_build_find_combination_program();
-				void cl_validate_predictions(unsigned char map_size, std::vector<unsigned char>& map, std::vector<unsigned>& results, unsigned total) const;
+				void cl_validate_predictions(unsigned char map_size, std::vector<unsigned char>& map, ClResultArr& results, int& result_count, unsigned total) const;
 #endif
 				int find_hamming_weight(int i) const;
 				void get_combination_search_map(solver_map& solver_map, border& border, std::vector<unsigned char>& m, unsigned char& map_size) const;
