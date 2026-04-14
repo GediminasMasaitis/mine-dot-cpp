@@ -151,7 +151,6 @@ static void initialize_combination_ratios()
 	{
 		auto& ratios = combination_ratios[n];
 		ratios.resize(max_size);
-		//CombinationRatios[n] = ratios;
 		ratios[0] = 1;
 		for (auto k = 1; k <= n; k++)
 		{

@@ -98,8 +98,6 @@ void solver_service_separation::solve_border(solver_map& m, border& b, bool allo
 	}
 
 	combination_service.find_valid_border_cell_combinations(m, b);
-	//dump_predictions(b.valid_combinations);
-
 	if (b.valid_combinations.size() == 0)
 	{
 		// TODO: Must be invalid map... Handle somehow
@@ -361,7 +359,6 @@ void solver_service_separation::calculate_partial_map_and_trim_partial_border(bo
 			c.state = cell_state_wall;
 		}
 	}
-	//var partialMap = new Map(newWidth, newHeight, null, true, CellState.Wall);
 	for (auto& c : partial_border.cells)
 	{
 		partial_map[c.pt] = c;
@@ -414,7 +411,6 @@ void solver_service_separation::get_partial_border(border& border, solver_map& m
 		border_data.partial_border = partial_border_candidate;
 		border_data.partial_map = partial_map_candidate;
 	}
-	//Debugging.Visualize(map, border, partialBorder);
 	if (!found)
 	{
 		border_data.partial_border.cells = partial_border_cells;

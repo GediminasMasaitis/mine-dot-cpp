@@ -32,7 +32,6 @@ void game_map_generator::generate_with_mine_count(game_map& m, point starting_po
 	}
 
 	m.remaining_mine_count = mine_count;
-	//var map = new GameMap(width, height, mine_count, true, CellState.Filled);
 
 	if(starting_position.x > -1 && starting_position.y > -1)
 	{
@@ -46,7 +45,6 @@ void game_map_generator::generate_with_mine_count(game_map& m, point starting_po
 				vector_erase_value_quick(coordinates, starting_neighbour->pt);
 			}
 		}
-		//map[startingPosition].State = CellState.Empty;
 	}
 
 	std::shuffle(coordinates.begin(), coordinates.end(), *random_engine);

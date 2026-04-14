@@ -77,7 +77,6 @@ void list_open_cl_devices()
 void solve_from_file(int argc, char* argv[])
 {
 	minedotcpp::mapio::text_map_parser parser;
-	//minedotcpp::mapio::text_map_visualizer visualizer;
 	string path = "C:/mine/map.txt";
 	map test_map;
 	if(argc > 1)
@@ -137,7 +136,6 @@ void solve_from_file(int argc, char* argv[])
 	//settings.guess_if_no_no_mine_verdict = false;
 	//settings.give_up_from_size = 25;
 	init_solver(settings);
-	//solver s(settings);
 	std::chrono::high_resolution_clock clock;
 	auto results = vector<solver_result>(1024);
 	auto results_size = static_cast<int>(results.size());
@@ -253,11 +251,6 @@ void test_global_api()
 
 }
 
-void pattern_search_test()
-{
-	//auto pt = point{ 4 , 6 };
-}
-
 int main(int argc, char* argv[])
 {
 #ifdef _WIN32
@@ -272,10 +265,7 @@ int main(int argc, char* argv[])
 #ifdef ENABLE_OPEN_CL
 	list_open_cl_devices();
 #endif
-	//pattern_search_test();
 	solve_from_file(argc, argv);
-	//benchmark();
-	//test_global_api();
 	cout << "Press any key to continue" << endl;
 	getc(stdin);
 	return 0;

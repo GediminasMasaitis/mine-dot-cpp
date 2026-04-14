@@ -150,7 +150,6 @@ static void visualize(minedotcpp::common::map& m, std::vector<std::vector<minedo
 		ss << "start \"\" \"" << visualizer_path << "\" ";
 	}
 	
-	//std::istringstream mapss(str);
 	if(external)
 	{
 		for(auto& str : maps)

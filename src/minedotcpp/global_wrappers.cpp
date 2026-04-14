@@ -21,12 +21,10 @@ extern "C" void MINE_API init_solver(solver_settings settings)
 	}
 	g_settings = settings;
 	g_solver = new solver(g_settings);
-	printf("%i; %i; %i\n", g_settings.give_up_from_size, g_settings.valid_combination_search_open_cl_use_from_size, g_settings.separation_solve);
 }
 
 extern "C" int MINE_API solve(const char* map_str, solver_result* results_buffer, int* buffer_size)
 {
-	//puts(map_str);
 	auto m = map();
 	parser.parse(map_str, m);
 	auto results = point_map<solver_result>();

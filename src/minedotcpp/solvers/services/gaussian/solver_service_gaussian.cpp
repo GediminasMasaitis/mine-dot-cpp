@@ -13,52 +13,17 @@ void solver_service_gaussian::solve_gaussian(solver_map& m, point_map<bool>& ver
 {
 	auto parameters = vector<matrix_reduction_parameters>
 	{
-		//matrix_reduction_parameters(true, false, false),  // 0.4   3.4
-
-		matrix_reduction_parameters(false, false, true),  // 9.9   30.5
-		matrix_reduction_parameters(false, true, true),   // 9.9   29.3
-		matrix_reduction_parameters(false, true, false),  // 11.3  27.7
-		matrix_reduction_parameters(false, false, false), // 1.2   7.4
-
-		/*matrix_reduction_parameters(false, false, true, false, false),  // 0.6   5.9
-		matrix_reduction_parameters(false, false, true, false, true),   // 16.1  31.8
-		matrix_reduction_parameters(false, false, true, true, false),   // 5.9   23.1
-		matrix_reduction_parameters(false, false, true, true, true),    // 16.2  32*/
-
-		/*matrix_reduction_parameters(false, true, false, false, false),  // 0.7   7.7
-		matrix_reduction_parameters(false, true, false, false, true),   // 20.7  31.4
-		matrix_reduction_parameters(false, true, false, true, false),   // 5.5   23.7
-		matrix_reduction_parameters(false, true, false, true, true),    // 20.8  30.7*/
-
-		/*matrix_reduction_parameters(false, true, true, false, false),   // 1.3   6.8
-		matrix_reduction_parameters(false, true, true, false, true),    // 11.2  29.1
-		matrix_reduction_parameters(false, true, true, true, false),    // 12.3  27.6
-		matrix_reduction_parameters(false, true, true, true, true),     // 11.7  28.8*/
+		matrix_reduction_parameters(false, false, true),
+		matrix_reduction_parameters(false, true, true),
+		matrix_reduction_parameters(false, true, false),
+		matrix_reduction_parameters(false, false, false),
 	};
 	auto points = vector<point>();
 	auto matrix = vector<vector<int>>();
 	get_matrix_from_map(m, points, matrix);
-	//mutex sync;
-	//auto futures = vector<future<void>>();
 	for(auto& p : parameters)
 	{
-		//futures.emplace_back(thr_pool->push([this, &matrix, &points, &verdicts, &sync, &p](int thr_num)
-		//{
-			//auto local_matrix = matrix;
-			//auto local_points = points;
-			//auto round_verdicts = point_map<bool>();
-			solve_gaussian_with_parameters(matrix, points, verdicts, p);
-
-			//lock_guard<mutex> guard(sync);
-			/*for(auto& verdict : round_verdicts)
-			{
-				assert([&]()
-				{
-					auto old_iter = verdicts.find(verdict.first);
-					return old_iter == verdicts.end() || old_iter->second == verdict.second;
-				}());
-				verdicts[verdict.first] = verdict.second;
-			}*/
+		solve_gaussian_with_parameters(matrix, points, verdicts, p);
 		if(matrix.size() == 0)
 		{
 			break;
@@ -67,13 +32,7 @@ void solver_service_gaussian::solve_gaussian(solver_map& m, point_map<bool>& ver
 		{
 			break;
 		}
-		//}));
 	}
-
-	//for(auto& future : futures)
-	//{
-	//	future.get();
-	//}
 }
 
 void solver_service_gaussian::get_matrix_from_map(solver_map& m, vector<point>& points, vector<vector<int>>& matrix) const
@@ -270,32 +229,6 @@ void solver_service_gaussian::reduce_matrix(vector<vector<int>>& matrix, const m
 			columns_data.emplace_back(i, cnt);
 		}
 	}
-
-	/*std::sort(columns_data.begin(), columns_data.end(), [&parameters](const column_data& lhs, const column_data& rhs)
-	{
-		if(parameters.reverse_columns)
-		{
-			if(parameters.order_columns)
-			{
-				return lhs.cnt > rhs.cnt;
-			}
-			else
-			{
-				return lhs.index > rhs.index;
-			}
-		}
-		else
-		{
-			if(parameters.order_columns)
-			{
-				return lhs.cnt < rhs.cnt;
-			}
-			else
-			{
-				return lhs.index < rhs.index;
-			}
-		}
-	});*/
 
 	auto columns = vector<int>();
 	columns.reserve(columns_data.size());

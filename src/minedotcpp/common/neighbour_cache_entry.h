@@ -13,7 +13,6 @@ namespace minedotcpp
 			std::vector<cell*> all_neighbours;
 			std::vector<cell*> by_state[3];
 			std::vector<cell*> by_flag[3];
-			//std::vector<cell*> by_param[16];
 
 			neighbour_cache_entry()
 			{

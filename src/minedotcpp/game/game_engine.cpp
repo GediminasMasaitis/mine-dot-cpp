@@ -98,10 +98,6 @@ minedotcpp::game::game_result minedotcpp::game::game_engine::open_cell(common::p
 	{
 		gm.cell_get(p).state = common::cell_state_empty;
 	}
-	/*if(gm.remaining_mine_count > 0)
-	{
-		return move_correct;
-	}*/
 	for (auto& c : gm.cells)
 	{
 		if (c.state == common::cell_state_filled && !c.has_mine)

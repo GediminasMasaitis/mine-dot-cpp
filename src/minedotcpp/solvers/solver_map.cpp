@@ -71,7 +71,6 @@ void solver_map::build_neighbour_cache()
 				for(auto k = 0; k < 3; k++)
 				{
 					entry.by_flag[k].clear();
-					//entry.by_param[k].clear();
 				}
 			}
 			calculate_neighbours_of(cell.pt, entry.all_neighbours, false);
@@ -124,14 +123,7 @@ void solver_map::update_neighbour_cache(point pt)
 	{
 		entry.by_state[i].clear();
 		entry.by_flag[i].clear();
-		//entry.by_param[i].clear();
-		//entry.by_param[(cell_state_filled | i << 2)].clear();
 	}
-	/*for(auto i = 0; i < 16; i++)
-	{
-		entry.by_flag[i].clear();
-		entry.by_param[i].clear();
-	}*/
 	build_additional_neighbour_lists(entry);
 }
 
@@ -140,8 +132,6 @@ void solver_map::build_additional_neighbour_lists(neighbour_cache_entry& entry)
 	for (auto& neighbour : entry.all_neighbours)
 	{
 		auto param = neighbour->state;
-		//entry.by_param[param].push_back(neighbour);
-
 		auto state = param & cell_states;
 		entry.by_state[state].push_back(neighbour);
 
