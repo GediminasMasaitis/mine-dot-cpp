@@ -24,7 +24,6 @@ namespace minedotcpp
 				{
 				}
 
-				void get_pattern(solver_map& m) const;
 				void solve_separation(solver_map& m, common::point_map<double>& probabilities, common::point_map<bool>& verdicts) const;
 
 			private:
