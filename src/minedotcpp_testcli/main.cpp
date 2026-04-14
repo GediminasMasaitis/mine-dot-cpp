@@ -2,6 +2,7 @@
 #include <string>
 #include <sstream>
 #include <fstream>
+#include <filesystem>
 #include "mapio/text_map_parser.h"
 #include "mapio/text_map_visualizer.h"
 #include "solvers/solver.h"
@@ -20,6 +21,31 @@ using namespace std;
 using namespace minedotcpp::common;
 using namespace minedotcpp::solvers;
 
+string resolve_path(const string& path)
+{
+	if (filesystem::exists(path))
+	{
+		return path;
+	}
+#ifdef __linux__
+	// Try WSL mount: convert "C:/foo" or "C:\foo" to "/mnt/c/foo"
+	if (path.size() >= 2 && path[1] == ':')
+	{
+		string wsl_path = "/mnt/" + string(1, tolower(path[0])) + "/" + path.substr(2);
+		for (auto& c : wsl_path)
+		{
+			if (c == '\\') c = '/';
+		}
+		if (filesystem::exists(wsl_path))
+		{
+			return wsl_path;
+		}
+	}
+#endif
+	return path;
+}
+
+#ifdef ENABLE_OPEN_CL
 void list_open_cl_devices()
 {
 	auto platforms = vector<cl::Platform>();
@@ -46,6 +72,7 @@ void list_open_cl_devices()
 		}
 	}
 }
+#endif
 
 void solve_from_file(int argc, char* argv[])
 {
@@ -84,6 +111,7 @@ void solve_from_file(int argc, char* argv[])
 
 	if(test_map.width == -1 && test_map.height == -1)
 	{
+		path = resolve_path(path);
 		ifstream strm(path);
 		parser.parse(strm, test_map);
 		strm.close();
@@ -167,7 +195,7 @@ void benchmark()
 	
 	auto solvr = solver(settings);
 
-	auto file = fstream("C:/mine/results.txt", ios_base::in | ios_base::out | ios_base::app);
+	auto file = fstream(resolve_path("C:/mine/results.txt"), ios_base::in | ios_base::out | ios_base::app);
 	
 	for(auto mineCount = 99; mineCount < 100; mineCount++)
 	{
@@ -241,7 +269,9 @@ int main(int argc, char* argv[])
 	GetWindowRect(wh, &rect);
 	MoveWindow(wh, rect.left, 50, 1300, 950, TRUE);
 #endif
+#ifdef ENABLE_OPEN_CL
 	list_open_cl_devices();
+#endif
 	//pattern_search_test();
 	solve_from_file(argc, argv);
 	//benchmark();

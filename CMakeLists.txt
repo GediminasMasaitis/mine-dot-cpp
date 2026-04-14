@@ -8,7 +8,7 @@ set(CMAKE_CXX_STANDARD 20)
 
 # External library usage
 set(USE_SPARSEHASH true)
-set(USE_OPENCL true)
+option(USE_OPENCL "Enable OpenCL GPU acceleration" ON)
 set(shared true)
 
 add_subdirectory(src/minedotcpp)

@@ -1,5 +1,6 @@
 #include <string>
 #include <sstream>
+#include <cstring>
 
 #include "text_map_parser.h"
 

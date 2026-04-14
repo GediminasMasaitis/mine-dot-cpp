@@ -1,4 +1,5 @@
 #include "solver_service_base.h"
+#include <cmath>
 
 using namespace minedotcpp;
 using namespace solvers;
