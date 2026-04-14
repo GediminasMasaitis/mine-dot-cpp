@@ -104,19 +104,7 @@ void solver_service_separation::get_pattern(solver_map& m) const
 	visualize(final_map, { final_border }, false);
 }
 
-ZobristKey CalculateKey(const border& border)
-{
-	ZobristKey key = 0;
-	for (auto& cell : border.cells)
-	{
-		const auto index = cell.state == (cell_state_filled | cell_flag_has_mine) ? 1 : 0;
-		auto cellKey = ZobristKeys.Keys[cell.pt.x][cell.pt.y][index];
-		key ^= cellKey;
-	}
-	return key;
-}
-
-void solver_service_separation::solve_separation(solver_map& m, point_map<double>& probabilities, point_map<bool>& verdicts)
+void solver_service_separation::solve_separation(solver_map& m, point_map<double>& probabilities, point_map<bool>& verdicts) const
 {
 	border common_border;
 	vector<border> original_borders;
@@ -143,19 +131,8 @@ void solver_service_separation::solve_separation(solver_map& m, point_map<double
 
 	for (auto& b : original_borders)
 	{
-		//const ZobristKey key = CalculateKey(b);
-		//const auto it = Table.find(key);
-		//if(it != Table.end())
-		//{
-		//	b.probabilities = it->second;
-		//	get_verdicts_from_probabilities(b.probabilities, b.verdicts);
-		//	m.set_cells_by_verdicts(b.verdicts);
-		//}
-		//else
-		//{
-			solve_border(m, b, true, borders);
-		//}
-		
+		solve_border(m, b, true, borders);
+
 		for (auto& borderVerdict : b.verdicts)
 		{
 			verdicts[borderVerdict.first] = borderVerdict.second;
@@ -164,13 +141,6 @@ void solver_service_separation::solve_separation(solver_map& m, point_map<double
 		{
 			probabilities[probability.first] = probability.second;
 		}
-
-		//if (it == Table.end())
-		//{
-		//	Table[key] = b.probabilities;
-		//	auto key2 = CalculateKey(b);
-		//	Table[key2] = b.probabilities;
-		//}
 
 		if(should_stop_solving(verdicts, settings.separation_single_border_stop_on_no_mine_verdict, settings.separation_single_border_stop_on_any_verdict, settings.separation_single_border_stop_always))
 		{

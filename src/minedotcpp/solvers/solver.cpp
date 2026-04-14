@@ -11,7 +11,7 @@ using namespace services;
 using namespace common;
 using namespace std;
 
-void solver::solve(const map& base_map, point_map<solver_result>& results)
+void solver::solve(const map& base_map, point_map<solver_result>& results) const
 {
 	solver_map m;
 	m.init_from(base_map);
@@ -51,7 +51,6 @@ void solver::solve(const map& base_map, point_map<solver_result>& results)
 		separation_service.solve_separation(m, probabilities, verdicts);
 	}
 	get_final_results(m, probabilities, verdicts, results);
-	auto a = 123;
 }
 
 void solver::get_final_results(solver_map& m, point_map<double>& probabilities, point_map<bool>& verdicts, point_map<solver_result>& results) const

@@ -145,7 +145,6 @@ void solver_service_separation_combination_finding::cl_validate_predictions(unsi
 
 		err = kernel.setArg(4, offset);
 		auto run_err = queue.enqueueNDRangeKernel(kernel, cl::NullRange, cl::NDRange(batch_load), cl::NullRange/*cl::NDRange(1)*/);
-		auto a = 123;
 	}
 	auto read_count_err = queue.enqueueReadBuffer(count_buf, CL_TRUE, 0, sizeof(int), &result_count);
 	//results.resize(result_count);

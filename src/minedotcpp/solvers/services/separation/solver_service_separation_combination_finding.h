@@ -18,7 +18,7 @@ namespace minedotcpp
 		{
 			using ClResultArr = std::array<unsigned int, 1024 * 1024 * 64>;
 			
-			class solver_service_separation_combination_finding : public solver_service_base
+			class solver_service_separation_combination_finding : private solver_service_base
 			{
 			public:
 				explicit solver_service_separation_combination_finding(const solver_settings& settings, ctpl::thread_pool* thr_pool)

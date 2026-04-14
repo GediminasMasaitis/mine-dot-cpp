@@ -98,6 +98,7 @@ void solve_from_file(int argc, char* argv[])
 	settings.partial_solve = false;
 	settings.mine_count_solve = false;
 	settings.give_up_from_size = 100;
+	settings.separation_solve = false;
 	settings.valid_combination_search_multithread = true;
 	settings.valid_combination_search_open_cl = true;
 	settings.valid_combination_search_open_cl_allow_loop_break = false;
@@ -162,16 +163,11 @@ void benchmark()
 	settings.valid_combination_search_multithread = true;
 	settings.valid_combination_search_open_cl = false;
 	settings.valid_combination_search_open_cl_allow_loop_break = false;
-	
-	
-	//settings.gaussian_all_stop_always = true;
-	//settings.separation_single_border_stop_on_no_mine_verdict = false;
-	//settings.guess_if_no_no_mine_verdict = true;
+	settings.valid_combination_search_open_cl = false;
 	
 	auto solvr = solver(settings);
 
 	auto file = fstream("C:/mine/results.txt", ios_base::in | ios_base::out | ios_base::app);
-	//file << "16x16 30-->100" << endl;
 	
 	for(auto mineCount = 99; mineCount < 100; mineCount++)
 	{
@@ -201,122 +197,6 @@ void benchmark()
 	file.close();
 }
 
-void benchmark2()
-{
-	auto mt = std::mt19937(0);
-	auto benchmarker = minedotcpp::benchmarking::benchmarker(mt);
-	benchmarker.on_iteration = on_iteration_impl;
-	benchmarker.on_end = on_end_impl;
-
-	auto settings = solver_settings();
-	settings.trivial_solve = true;
-	settings.trivial_stop_always = true;
-	//settings.gaussian_solve = false;
-	//settings.separation_solve = false;
-
-	//settings.gaussian_all_stop_always = true;
-	//settings.separation_single_border_stop_on_no_mine_verdict = false;
-	settings.valid_combination_search_open_cl_platform_id = 0;
-	//settings.guess_if_no_no_mine_verdict = true;
-
-	auto solvr = solver(settings);
-
-	auto file = fstream("C:/mine/results2.txt", ios_base::in | ios_base::out | ios_base::app);
-	file << "16x16 30-->100" << endl;
-
-	for (auto size = 4; size < 64; size++)
-	{
-		auto group = minedotcpp::benchmarking::benchmark_density_group();
-		auto count = 1000;
-		const auto width = size;
-		const auto heigth = size;
-		const auto area = width * heigth;
-		const auto mineCount = (area * 15) / 100;
-		benchmarker.benchmark_multiple(solvr, width, heigth, mineCount, count, group);
-		cout << "Density: " << group.density << endl;
-		size_t sum = 0;
-		auto success_count = 0;
-		for (auto& entry : group.entries)
-		{
-			//cout << entry.total_duration << "; ";
-			sum += entry.total_duration;
-			if (entry.solved)
-			{
-				success_count++;
-			}
-		}
-		auto success_rate = (static_cast<double>(success_count) / count) * 100;
-		const auto avg = (sum / count);
-		cout << endl << "Total: " << (avg / 1000) << " us" << endl;
-		cout << "Success rate: " << success_rate << "%" << endl;
-		file << std::fixed << std::setprecision(2) << size << "\t" << success_rate << "\t" << (avg / 1000) << "\t" << endl;
-	}
-	file.close();
-}
-
-void benchmark3()
-{
-	auto settings = solver_settings();
-	settings.trivial_solve = true;
-	settings.gaussian_solve = true;
-
-	settings.separation_solve = true;
-	settings.partial_solve = false;
-	settings.mine_count_solve = false;
-	settings.valid_combination_search_multithread = true;
-	settings.valid_combination_search_open_cl = true;
-
-	//settings.gaussian_all_stop_always = true;
-	//settings.separation_single_border_stop_on_no_mine_verdict = false;
-	//settings.guess_if_no_no_mine_verdict = true;
-	auto solvr = solver(settings);
-	
-
-	auto file = fstream("C:/mine/results3.txt", ios_base::in | ios_base::out | ios_base::app);
-	//file << "16x16 30-->100" << endl;
-
-	for (auto multiThreadFrom = 16; multiThreadFrom <= 30; multiThreadFrom++)
-	{
-		auto mt = std::mt19937(0);
-		auto benchmarker = minedotcpp::benchmarking::benchmarker(mt);
-		benchmarker.on_iteration = on_iteration_impl;
-		benchmarker.on_end = on_end_impl;
-		const auto mineCount = 50;
-		//settings.valid_combination_search_multithread_thread_count = multiThreadFrom;
-		//solvr.settings.valid_combination_search_multithread_thread_count = multiThreadFrom;
-		//solvr.separation_service.settings.valid_combination_search_multithread_thread_count = multiThreadFrom;
-		//solvr.separation_service.combination_service.settings.valid_combination_search_multithread_thread_count = multiThreadFrom;
-		
-		settings.valid_combination_search_open_cl_use_from_size = multiThreadFrom;
-		solvr.settings.valid_combination_search_open_cl_use_from_size = multiThreadFrom;
-		solvr.separation_service.settings.valid_combination_search_open_cl_use_from_size = multiThreadFrom;
-		solvr.separation_service.combination_service.settings.valid_combination_search_open_cl_use_from_size = multiThreadFrom;
-		
-		auto group = minedotcpp::benchmarking::benchmark_density_group();
-		auto count = 1000;
-		const auto width = 16;
-		const auto heigth = 16;
-		benchmarker.benchmark_multiple(solvr, width, heigth, mineCount, count, group);
-		cout << "Density: " << group.density << endl;
-		size_t sum = 0;
-		auto success_count = 0;
-		for (auto& entry : group.entries)
-		{
-			//cout << entry.total_duration << "; ";
-			sum += entry.total_duration;
-			if (entry.solved)
-			{
-				success_count++;
-			}
-		}
-		auto success_rate = (static_cast<double>(success_count) / count) * 100;
-		const auto avg = (sum / count);
-		cout << endl << "Total: " << (avg / 1000) << " us" << endl;
-		cout << "Success rate: " << success_rate << "%" << endl;
-		file << std::fixed << std::setprecision(2) << multiThreadFrom << "\t" << (avg / 1000) << "\t" << endl;
-	}
-	file.close();
-}
 
 void test_global_api()
 {
@@ -350,11 +230,6 @@ void pattern_search_test()
 	//auto pt = point{ 4 , 6 };
 }
 
-void umsi()
-{
-	
-}
-
 int main(int argc, char* argv[])
 {
 #ifdef _WIN32
@@ -368,8 +243,8 @@ int main(int argc, char* argv[])
 #endif
 	list_open_cl_devices();
 	//pattern_search_test();
-	//solve_from_file(argc, argv);
-	benchmark();
+	solve_from_file(argc, argv);
+	//benchmark();
 	//test_global_api();
 	cout << "Press any key to continue" << endl;
 	getc(stdin);

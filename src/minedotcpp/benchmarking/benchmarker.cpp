@@ -17,7 +17,6 @@ void minedotcpp::benchmarking::benchmarker::benchmark_multiple(solvers::solver& 
 
 void minedotcpp::benchmarking::benchmarker::benchmark(int benchmark_index, solvers::solver& s, int width, int height, int mine_count, benchmark_entry& entry)
 {
-	s.ResetTable();
 	common::point starting_pt = {0,0};
 	auto engine = game::game_engine(generator);
 	auto initial_result = engine.start_with_mine_count(width, height, starting_pt, false, mine_count);

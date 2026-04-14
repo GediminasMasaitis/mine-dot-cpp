@@ -7,7 +7,6 @@
 #include "../solver_service_base.h"
 #include <mutex>
 #include "solver_service_separation_combination_finding.h"
-#include "../../zobrist.h"
 
 
 namespace minedotcpp
@@ -16,7 +15,7 @@ namespace minedotcpp
 	{
 		namespace services
 		{
-			class solver_service_separation : public solver_service_base
+			class solver_service_separation : private solver_service_base
 			{
 			public:
 				explicit solver_service_separation(const solver_settings& settings, ctpl::thread_pool* thr_pool)
@@ -26,11 +25,10 @@ namespace minedotcpp
 				}
 
 				void get_pattern(solver_map& m) const;
-				void solve_separation(solver_map& m, common::point_map<double>& probabilities, common::point_map<bool>& verdicts);
+				void solve_separation(solver_map& m, common::point_map<double>& probabilities, common::point_map<bool>& verdicts) const;
 
-				//key_map<common::point_map<double>> Table{};
-				solver_service_separation_combination_finding combination_service;
 			private:
+				solver_service_separation_combination_finding combination_service;
 				void solve_border(solver_map& m, border& b, bool allow_partial_border_solving, std::vector<border>& borders) const;
 				void calculate_min_max_mine_counts(border& b) const;
 				void try_solve_border_by_partial_borders(solver_map& map, border& border) const;
