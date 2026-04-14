@@ -170,57 +170,70 @@ void on_end_impl(minedotcpp::benchmarking::benchmark_entry& entry)
 
 void benchmark()
 {
-	auto mt = std::mt19937(0);
-	auto benchmarker = minedotcpp::benchmarking::benchmarker(mt);
-	benchmarker.on_iteration = on_iteration_impl;
-	benchmarker.on_end = on_end_impl;
-	
-	auto settings = solver_settings();
-	settings.trivial_solve = true;
-	settings.gaussian_solve = true;
-	
-	settings.separation_solve = true;
-	settings.partial_solve = true;
-	settings.mine_count_solve = true;
-	settings.mine_count_solve_non_border = true;
-	settings.give_up_from_size = 28;
-	settings.partial_solve_from_size = 28;
-	settings.partial_optimal_size = 24;
-	settings.valid_combination_search_multithread = true;
-	settings.valid_combination_search_open_cl = false;
-	settings.valid_combination_search_open_cl_allow_loop_break = false;
-	settings.valid_combination_search_open_cl = false;
-	
-	auto solvr = solver(settings);
-
-	auto file = fstream(resolve_path("C:/mine/results.txt"), ios_base::in | ios_base::out | ios_base::app);
-	
-	for(auto mineCount = 99; mineCount < 100; mineCount++)
+	struct benchmark_config
 	{
-		auto group = minedotcpp::benchmarking::benchmark_density_group();
-		auto count = 10000;
-		const auto width = 30;
-		const auto heigth = 16;
-		benchmarker.benchmark_multiple(solvr, width, heigth, mineCount, count, group);
-		cout << "Density: " << group.density << endl;
-		size_t sum = 0;
-		auto success_count = 0;
-		for (auto& entry : group.entries)
+		const char* label;
+		bool gaussian_reduction;
+		bool gaussian_backtracking;
+	};
+
+	benchmark_config configs[] = {
+		{"WITHOUT gaussian reduction",              false, false},
+		{"WITH gaussian reduction (flat)",           true, false},
+		{"WITH gaussian reduction (backtracking)",   true,  true},
+	};
+
+	for (auto& config : configs)
+	{
+		cout << endl << "=== Benchmark: " << config.label << " ===" << endl;
+
+		auto mt = std::mt19937(0);
+		auto benchmarker = minedotcpp::benchmarking::benchmarker(mt);
+		benchmarker.on_iteration = on_iteration_impl;
+		benchmarker.on_end = on_end_impl;
+
+		auto settings = solver_settings();
+		settings.trivial_solve = true;
+		settings.gaussian_solve = true;
+		settings.separation_solve = true;
+		settings.partial_solve = true;
+		settings.mine_count_solve = true;
+		settings.mine_count_solve_non_border = true;
+		settings.give_up_from_size = 28;
+		settings.partial_solve_from_size = 28;
+		settings.partial_optimal_size = 24;
+		settings.valid_combination_search_multithread = true;
+		settings.valid_combination_search_open_cl = false;
+		settings.valid_combination_search_open_cl_allow_loop_break = false;
+		settings.combination_search_gaussian_reduction = config.gaussian_reduction;
+		settings.combination_search_gaussian_backtracking = config.gaussian_backtracking;
+
+		auto solvr = solver(settings);
+
+		for (auto mineCount = 99; mineCount < 100; mineCount++)
 		{
-			//cout << entry.total_duration << "; ";
-			sum += entry.total_duration;
-			if (entry.solved)
+			auto group = minedotcpp::benchmarking::benchmark_density_group();
+			auto count = 100;
+			const auto width = 30;
+			const auto heigth = 16;
+			benchmarker.benchmark_multiple(solvr, width, heigth, mineCount, count, group);
+			cout << "Density: " << group.density << endl;
+			size_t sum = 0;
+			auto success_count = 0;
+			for (auto& entry : group.entries)
 			{
-				success_count++;
+				sum += entry.total_duration;
+				if (entry.solved)
+				{
+					success_count++;
+				}
 			}
+			auto success_rate = (static_cast<double>(success_count) / count) * 100;
+			const auto avg = (sum / count);
+			cout << "Avg: " << (avg / 1000) << " us" << endl;
+			cout << "Success rate: " << success_rate << "%" << endl;
 		}
-		auto success_rate = (static_cast<double>(success_count) / count) * 100;
-		const auto avg = (sum / count);
-		cout << endl << "Total: " << (avg / 1000) << " us" << endl;
-		cout << "Success rate: " << success_rate << "%" << endl;
-		file << std::fixed << std::setprecision(2) << group.density*100 << "\t" << success_rate << "\t" << (avg / 1000) << "\t" << endl;
 	}
-	file.close();
 }
 
 
@@ -254,18 +267,28 @@ void test_global_api()
 int main(int argc, char* argv[])
 {
 #ifdef _WIN32
-	COORD coord = {300,1000};
-	auto handle = GetStdHandle(STD_OUTPUT_HANDLE);
-	SetConsoleScreenBufferSize(handle, coord);
 	auto wh = GetConsoleWindow();
-	RECT rect = { NULL };
-	GetWindowRect(wh, &rect);
-	MoveWindow(wh, rect.left, 50, 1300, 950, TRUE);
+	if (wh != NULL)
+	{
+		COORD coord = {300,1000};
+		auto handle = GetStdHandle(STD_OUTPUT_HANDLE);
+		SetConsoleScreenBufferSize(handle, coord);
+		RECT rect = {};
+		GetWindowRect(wh, &rect);
+		MoveWindow(wh, rect.left, 50, 1300, 950, TRUE);
+	}
 #endif
 #ifdef ENABLE_OPEN_CL
 	list_open_cl_devices();
 #endif
-	solve_from_file(argc, argv);
+	if (argc > 1 && string(argv[1]) == "--benchmark")
+	{
+		benchmark();
+	}
+	else
+	{
+		solve_from_file(argc, argv);
+	}
 	cout << "Press any key to continue" << endl;
 	getc(stdin);
 	return 0;

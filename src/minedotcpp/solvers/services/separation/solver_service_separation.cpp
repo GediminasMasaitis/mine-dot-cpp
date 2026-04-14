@@ -71,9 +71,27 @@ void solver_service_separation::solve_separation(solver_map& m, point_map<double
 
 void solver_service_separation::solve_border(solver_map& m, border& b, bool allow_partial_border_solving, vector<border>& borders) const
 {
+	auto effective_size = static_cast<int>(b.cells.size());
+	border_reduction_result reduction;
+
+	if (settings.combination_search_gaussian_reduction && b.cells.size() > 1)
+	{
+		reduction = combination_service.reduce_border(m, b);
+		if (reduction.valid && reduction.free_count < effective_size)
+		{
+			effective_size = reduction.free_count;
+		}
+	}
+
+	if (effective_size > 31)
+	{
+		effective_size = static_cast<int>(b.cells.size());
+		reduction.valid = false;
+	}
+
 	if (settings.partial_solve)
 	{
-		if (allow_partial_border_solving && b.cells.size() > settings.partial_solve_from_size)
+		if (allow_partial_border_solving && effective_size > settings.partial_solve_from_size)
 		{
 			try_solve_border_by_partial_borders(m, b);
 			if (should_stop_solving(b.verdicts, settings.partial_all_stop_on_no_mine_verdict, settings.partial_all_stop_on_any_verdict, settings.partial_stop_always))
@@ -90,14 +108,14 @@ void solver_service_separation::solve_border(solver_map& m, border& b, bool allo
 		}
 	}
 
-	if (b.cells.size() > settings.give_up_from_size)
+	if (effective_size > settings.give_up_from_size)
 	{
 		b.solved_fully = false;
 		borders.push_back(b);
 		return;
 	}
 
-	combination_service.find_valid_border_cell_combinations(m, b);
+	combination_service.find_valid_border_cell_combinations(m, b, reduction);
 	if (b.valid_combinations.size() == 0)
 	{
 		// TODO: Must be invalid map... Handle somehow

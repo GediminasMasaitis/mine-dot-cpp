@@ -10,3 +10,6 @@ install_manifest.txt
 CTestTestfile.cmake
 
 build
+build_static
+bench_error.txt
+bench_output.txt

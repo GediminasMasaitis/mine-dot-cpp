@@ -60,6 +60,9 @@ namespace minedotcpp
 			int valid_combination_search_multithread_use_from_size = 8;
 			int valid_combination_search_multithread_thread_count = 16;
 
+			bool combination_search_gaussian_reduction = true;
+			bool combination_search_gaussian_backtracking = true;
+
 			int variable_mine_count_borders_probabilities_multithread_use_from = 128;
 			int variable_mine_count_borders_probabilities_give_up_from = 131072;
 
