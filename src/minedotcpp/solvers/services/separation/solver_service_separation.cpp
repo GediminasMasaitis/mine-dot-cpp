@@ -10,6 +10,7 @@
 
 #include <queue>
 #include <chrono>
+#include <cstdint>
 
 using namespace minedotcpp;
 using namespace solvers;
@@ -170,19 +171,33 @@ void solver_service_separation::solve_border(solver_map& m, border& b, bool allo
 		}
 		if (c_index >= 0)
 		{
-			if (c_index != b.cells.size() - 1)
+			const int last_index = static_cast<int>(b.cells.size()) - 1;
+			if (c_index != last_index)
 			{
 				b.cells[c_index] = move(b.cells.back());
 			}
 			b.cells.pop_back();
-			//b.cells.erase(b.cells.begin() + c_index);
+			// Update bitmasks: the cell at c_index is being removed.
+			// If c_index != last_index, the cell that was at last_index is now at c_index,
+			// so copy bit last_index into bit c_index. Then always clear bit last_index
+			// since that index is out of range after the pop. If we didn't clear it,
+			// downstream bit iteration (e.g. std::countr_zero) would reach it and try to
+			// index b.cells[last_index], which no longer exists.
+			// If the verdict is "has mine", decrement mine_count (the removed cell had a
+			// mine in every valid combination, since it's a certainty).
 			for (auto& valid_combination : b.valid_combinations)
 			{
-				valid_combination.pts.erase(whole_border_result.first);
-				if(whole_border_result.second)
+				if (whole_border_result.second)
 				{
 					--valid_combination.mine_count;
 				}
+				if (c_index != last_index)
+				{
+					std::uint64_t last_bit = (valid_combination.bitmask >> last_index) & 1ULL;
+					valid_combination.bitmask &= ~(1ULL << c_index);
+					valid_combination.bitmask |= (last_bit << c_index);
+				}
+				valid_combination.bitmask &= ~(1ULL << last_index);
 			}
 		}
 	}
@@ -611,18 +626,19 @@ void solver_service_separation::calculate_border_probabilities(border& b) const
 	{
 		return;
 	}
-	for (auto& c : b.cells)
+	const auto combo_count = static_cast<double>(b.valid_combinations.size());
+	for (size_t j = 0; j < b.cells.size(); ++j)
 	{
+		const std::uint64_t mask = 1ULL << j;
 		auto mine_count = 0;
 		for (auto& combination : b.valid_combinations)
 		{
-			if (combination.pts[c.pt])
+			if (combination.bitmask & mask)
 			{
 				++mine_count;
 			}
 		}
-		auto probability = static_cast<double>(mine_count) / b.valid_combinations.size();
-		b.probabilities[c.pt] = probability;
+		b.probabilities[b.cells[j].pt] = static_cast<double>(mine_count) / combo_count;
 	}
 }
 

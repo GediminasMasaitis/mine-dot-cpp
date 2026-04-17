@@ -1,4 +1,6 @@
 #include "solver_service_separation_mine_counts.h"
+#include <cstdint>
+#include <bit>
 
 using namespace minedotcpp;
 using namespace solvers;
@@ -115,10 +117,11 @@ void minedotcpp::solvers::services::solver_service_separation_mine_counts::solve
 
 void solver_service_separation_mine_counts::trim_valid_combinations_by_mine_count(border& b, int minesRemaining, int undecidedCellsRemaining, int minesElsewhere, int nonMineCountElsewhere) const
 {
+	// All combinations in a border share the same cell set, so combination size == b.cells.size().
+	const auto combination_size = b.cells.size();
 	for (auto i = 0; i < b.valid_combinations.size(); i++)
 	{
 		auto& combination = b.valid_combinations[i];
-		auto combination_size = combination.pts.size();
 		auto isValid = is_prediction_valid_by_mine_count(combination.mine_count, combination_size, minesRemaining, undecidedCellsRemaining, minesElsewhere, nonMineCountElsewhere);
 		if (!isValid)
 		{
@@ -172,18 +175,24 @@ inline static double combination_ratio(int from, int count)
 
 void solver_service_separation_mine_counts::thr_mine_counts(vector<border>& variable_borders, int min, int max, int mines_remaining, int mines_elsewhere, int non_border_cell_count, int total_combination_length, int undecided_cells_remaining, int non_mine_count_elsewhere, google::dense_hash_map<int, double>& ratios, google::dense_hash_map<int, double>& non_border_mine_counts, point_map<double>& counts, mutex& common_lock, point_map<mutex*>& count_locks) const
 {
+	// (border_index, combination_index) — avoids needing a pointer to the combination
+	// because decoding its bitmask requires access to the border's cell ordering.
+	struct combo_ref { int border_index; int combination_index; };
+	auto combinationArr = vector<combo_ref>();
+	combinationArr.reserve(variable_borders.size());
 	for (auto i = min; i < max; i++)
 	{
-		auto combinationArr = vector<combination*>();
+		combinationArr.clear();
 		auto mine_prediction_count = 0;
 		lldiv_t res{ i, 0 };
-		for (auto j = 0; j < variable_borders.size(); j++)
+		for (auto j = 0; j < static_cast<int>(variable_borders.size()); j++)
 		{
 			auto valid_combination_size =  variable_borders[j].valid_combinations.size();
-			res = div(res.quot, valid_combination_size);
-			auto& combo = variable_borders[j].valid_combinations[res.rem];
+			res = div(res.quot, static_cast<long long>(valid_combination_size));
+			auto combo_index = static_cast<int>(res.rem);
+			auto& combo = variable_borders[j].valid_combinations[combo_index];
 			mine_prediction_count += combo.mine_count;
-			combinationArr.push_back(&combo);
+			combinationArr.push_back({j, combo_index});
 		}
 
 		auto mines_in_non_border = mines_remaining - mines_elsewhere - mine_prediction_count;
@@ -206,16 +215,20 @@ void solver_service_separation_mine_counts::thr_mine_counts(vector<border>& vari
 			//throw new Exception("temp");
 			throw "temp";
 		}
-		for (auto& combo : combinationArr)
+		for (auto& cref : combinationArr)
 		{
-			for (auto& verdict : combo->pts)
+			auto& b = variable_borders[cref.border_index];
+			auto& combo = b.valid_combinations[cref.combination_index];
+			std::uint64_t mask = combo.bitmask;
+			while (mask != 0)
 			{
-				if (verdict.second)
-				{
-					auto& mutex = count_locks[verdict.first];
-					lock_guard<std::mutex> guard(*mutex);
-					counts[verdict.first] += ratio;
-				}
+				// Extract the lowest set bit's index and consume it.
+				int j = std::countr_zero(mask);
+				mask &= mask - 1;
+				auto& pt = b.cells[j].pt;
+				auto& mutex = count_locks[pt];
+				lock_guard<std::mutex> guard(*mutex);
+				counts[pt] += ratio;
 			}
 		}
 	}

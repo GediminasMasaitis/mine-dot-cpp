@@ -766,9 +766,9 @@ void solver_service_separation_combination_finding::find_valid_border_cell_combi
 
 	for (const auto& prediction : results)
 	{
+		const auto bits_set = find_hamming_weight(prediction);
 		if (solver_map.remaining_mine_count > 0)
 		{
-			const auto bits_set = find_hamming_weight(prediction);
 			if (bits_set > solver_map.remaining_mine_count)
 			{
 				++filtered_out;
@@ -780,20 +780,7 @@ void solver_service_separation_combination_finding::find_valid_border_cell_combi
 				continue;
 			}
 		}
-		point_map<bool> predictions;
-		predictions.resize(border_length);
-		auto mine_count = 0;
-		for (unsigned int j = 0; j < border_length; j++)
-		{
-			auto& pt = border.cells[j].pt;
-			auto has_mine = (prediction & (1ULL << j)) != 0;
-			predictions[pt] = has_mine;
-			if (has_mine)
-			{
-				++mine_count;
-			}
-		}
-		border.valid_combinations.emplace_back(mine_count, predictions);
+		border.valid_combinations.emplace_back(bits_set, prediction);
 	}
 
 	if (settings.print_trace)

@@ -206,7 +206,7 @@ void benchmark()
 		settings.valid_combination_search_open_cl_allow_loop_break = false;
 		settings.combination_search_gaussian_reduction = config.gaussian_reduction;
 		settings.combination_search_gaussian_backtracking = config.gaussian_backtracking;
-		settings.print_trace = true;
+		settings.print_trace = false;
 
 		auto solvr = solver(settings);
 
