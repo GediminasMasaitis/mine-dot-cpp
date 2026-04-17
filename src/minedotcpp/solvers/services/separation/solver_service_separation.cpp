@@ -208,7 +208,25 @@ void solver_service_separation::solve_border(solver_map& m, border& b, bool allo
 	}
 	else
 	{
-		borders.push_back(b);
+		auto t_pb_start = settings.print_trace ? std::chrono::high_resolution_clock::now() : std::chrono::high_resolution_clock::time_point{};
+		// Move the expensive fields to avoid deep-copying valid_combinations (each
+		// holds a point_map). Keep verdicts/probabilities intact on b because the
+		// caller in solve_separation still reads them after solve_border returns.
+		borders.emplace_back();
+		auto& pushed = borders.back();
+		pushed.cells = std::move(b.cells);
+		pushed.valid_combinations = std::move(b.valid_combinations);
+		pushed.min_mine_count = b.min_mine_count;
+		pushed.max_mine_count = b.max_mine_count;
+		pushed.probabilities = b.probabilities;
+		pushed.verdicts = b.verdicts;
+		pushed.solved_fully = b.solved_fully;
+		if (settings.print_trace)
+		{
+			auto pb_us = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now() - t_pb_start).count();
+			printf("[trace]   borders.push_back(move): combos=%zu, time=%lldus\n",
+				pushed.valid_combinations.size(), static_cast<long long>(pb_us));
+		}
 	}
 }
 
