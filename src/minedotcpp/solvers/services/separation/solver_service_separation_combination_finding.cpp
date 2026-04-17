@@ -1,6 +1,7 @@
 #include "../../solver_map.h"
 #include "../../border.h"
 #include "../../../debug/debugging.h"
+#include "../../../debug/trace_gate.h"
 #include <thread>
 #include <mutex>
 #include <queue>
@@ -445,7 +446,7 @@ border_reduction_result solver_service_separation_combination_finding::reduce_bo
 		return result;
 	}
 
-	auto t_start = settings.print_trace ? chrono::high_resolution_clock::now() : chrono::high_resolution_clock::time_point{};
+	auto t_start = (settings.print_trace && ::minedotcpp::debug::trace_active) ? chrono::high_resolution_clock::now() : chrono::high_resolution_clock::time_point{};
 
 	vector<vector<int>> matrix;
 	build_border_constraint_matrix(map, border, matrix);
@@ -455,18 +456,18 @@ border_reduction_result solver_service_separation_combination_finding::reduce_bo
 		return result;
 	}
 
-	auto t_build = settings.print_trace ? chrono::high_resolution_clock::now() : chrono::high_resolution_clock::time_point{};
+	auto t_build = (settings.print_trace && ::minedotcpp::debug::trace_active) ? chrono::high_resolution_clock::now() : chrono::high_resolution_clock::time_point{};
 
 	compute_rref(matrix, static_cast<int>(border.cells.size()), result);
 
-	auto t_rref = settings.print_trace ? chrono::high_resolution_clock::now() : chrono::high_resolution_clock::time_point{};
+	auto t_rref = (settings.print_trace && ::minedotcpp::debug::trace_active) ? chrono::high_resolution_clock::now() : chrono::high_resolution_clock::time_point{};
 
 	if (result.valid && settings.combination_search_gaussian_backtracking)
 	{
 		precompute_backtracking_depths(result);
 	}
 
-	if (settings.print_trace)
+	if ((settings.print_trace && ::minedotcpp::debug::trace_active))
 	{
 		auto t_end = chrono::high_resolution_clock::now();
 		auto build_us = chrono::duration_cast<chrono::microseconds>(t_build - t_start).count();
@@ -683,7 +684,7 @@ void solver_service_separation_combination_finding::find_valid_border_cell_combi
 
 	bool use_reduced = reduction.valid && reduction.free_count < static_cast<int>(border_length);
 
-	if (settings.print_trace)
+	if ((settings.print_trace && ::minedotcpp::debug::trace_active))
 	{
 		const char* strategy;
 		if (use_reduced)
@@ -707,7 +708,7 @@ void solver_service_separation_combination_finding::find_valid_border_cell_combi
 			use_reduced ? (1ULL << reduction.free_count) : (1ULL << border_length));
 	}
 
-	auto t_enum_start = settings.print_trace ? chrono::high_resolution_clock::now() : chrono::high_resolution_clock::time_point{};
+	auto t_enum_start = (settings.print_trace && ::minedotcpp::debug::trace_active) ? chrono::high_resolution_clock::now() : chrono::high_resolution_clock::time_point{};
 
 	if (use_reduced)
 	{
@@ -759,7 +760,7 @@ void solver_service_separation_combination_finding::find_valid_border_cell_combi
 		}
 	}
 
-	auto t_enum_end = settings.print_trace ? chrono::high_resolution_clock::now() : chrono::high_resolution_clock::time_point{};
+	auto t_enum_end = (settings.print_trace && ::minedotcpp::debug::trace_active) ? chrono::high_resolution_clock::now() : chrono::high_resolution_clock::time_point{};
 
 	size_t raw_results_count = results.size();
 	size_t filtered_out = 0;
@@ -783,7 +784,7 @@ void solver_service_separation_combination_finding::find_valid_border_cell_combi
 		border.valid_combinations.emplace_back(bits_set, prediction);
 	}
 
-	if (settings.print_trace)
+	if ((settings.print_trace && ::minedotcpp::debug::trace_active))
 	{
 		auto t_post_end = chrono::high_resolution_clock::now();
 		auto enum_us = chrono::duration_cast<chrono::microseconds>(t_enum_end - t_enum_start).count();

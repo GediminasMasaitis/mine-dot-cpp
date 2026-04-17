@@ -6,11 +6,13 @@
 #include "../../border.h"
 
 #include "../../../debug/debugging.h"
+#include "../../../debug/trace_gate.h"
 #include "../../../common/common_functions.h"
 
 #include <queue>
 #include <chrono>
 #include <cstdint>
+#include <bit>
 
 using namespace minedotcpp;
 using namespace solvers;
@@ -66,12 +68,12 @@ void solver_service_separation::solve_separation(solver_map& m, point_map<double
 
 	if (settings.mine_count_solve)
 	{
-		auto t_mc_start = settings.print_trace ? std::chrono::high_resolution_clock::now() : std::chrono::high_resolution_clock::time_point{};
+		auto t_mc_start = (settings.print_trace && ::minedotcpp::debug::trace_active) ? std::chrono::high_resolution_clock::now() : std::chrono::high_resolution_clock::time_point{};
 
 		auto mine_count_srvc = solver_service_separation_mine_counts(settings, thr_pool);
 		mine_count_srvc.solve_mine_counts(m, common_border, borders, probabilities, verdicts);
 
-		if (settings.print_trace)
+		if ((settings.print_trace && ::minedotcpp::debug::trace_active))
 		{
 			auto t_mc_end = std::chrono::high_resolution_clock::now();
 			auto mc_us = std::chrono::duration_cast<std::chrono::microseconds>(t_mc_end - t_mc_start).count();
@@ -103,7 +105,12 @@ void solver_service_separation::solve_border(solver_map& m, border& b, bool allo
 		reduction.valid = false;
 	}
 
-	if (settings.print_trace)
+	// Gate downstream traces on effective_size so we don't spam the console with
+	// the many small borders that finish in microseconds. Threshold is configurable
+	// via settings.print_trace_min_effective_size (set to 0 to trace every border).
+	debug::trace_scope trace_guard(settings.print_trace && effective_size >= settings.print_trace_min_effective_size);
+
+	if ((settings.print_trace && ::minedotcpp::debug::trace_active))
 	{
 		printf("[trace] solve_border: cells=%d, effective=%d, rref_valid=%d, free_count=%d\n",
 			static_cast<int>(b.cells.size()), effective_size,
@@ -112,7 +119,9 @@ void solver_service_separation::solve_border(solver_map& m, border& b, bool allo
 
 	if (settings.partial_solve)
 	{
-		if (allow_partial_border_solving && effective_size > settings.partial_solve_from_size)
+		const bool full_solve_will_run = effective_size <= settings.give_up_from_size;
+		const bool skip_partial = settings.partial_solve_only_when_giving_up && full_solve_will_run;
+		if (allow_partial_border_solving && effective_size > settings.partial_solve_from_size && !skip_partial)
 		{
 			try_solve_border_by_partial_borders(m, b);
 			if (should_stop_solving(b.verdicts, settings.partial_all_stop_on_no_mine_verdict, settings.partial_all_stop_on_any_verdict, settings.partial_stop_always))
@@ -142,16 +151,16 @@ void solver_service_separation::solve_border(solver_map& m, border& b, bool allo
 		// TODO: Must be invalid map... Handle somehow
 	}
 
-	auto t_after_find = settings.print_trace ? std::chrono::high_resolution_clock::now() : std::chrono::high_resolution_clock::time_point{};
+	auto t_after_find = (settings.print_trace && ::minedotcpp::debug::trace_active) ? std::chrono::high_resolution_clock::now() : std::chrono::high_resolution_clock::time_point{};
 
 	calculate_min_max_mine_counts(b);
 
-	auto t_after_minmax = settings.print_trace ? std::chrono::high_resolution_clock::now() : std::chrono::high_resolution_clock::time_point{};
+	auto t_after_minmax = (settings.print_trace && ::minedotcpp::debug::trace_active) ? std::chrono::high_resolution_clock::now() : std::chrono::high_resolution_clock::time_point{};
 
 	auto verdicts_before = b.verdicts.size();
 	calculate_border_probabilities(b);
 
-	auto t_after_probs = settings.print_trace ? std::chrono::high_resolution_clock::now() : std::chrono::high_resolution_clock::time_point{};
+	auto t_after_probs = (settings.print_trace && ::minedotcpp::debug::trace_active) ? std::chrono::high_resolution_clock::now() : std::chrono::high_resolution_clock::time_point{};
 
 	get_verdicts_from_probabilities(b.probabilities, b.verdicts);
 	m.set_cells_by_verdicts(b.verdicts);
@@ -202,7 +211,7 @@ void solver_service_separation::solve_border(solver_map& m, border& b, bool allo
 		}
 	}
 
-	if (settings.print_trace)
+	if ((settings.print_trace && ::minedotcpp::debug::trace_active))
 	{
 		auto t_end = std::chrono::high_resolution_clock::now();
 		auto minmax_us = std::chrono::duration_cast<std::chrono::microseconds>(t_after_minmax - t_after_find).count();
@@ -223,7 +232,7 @@ void solver_service_separation::solve_border(solver_map& m, border& b, bool allo
 	}
 	else
 	{
-		auto t_pb_start = settings.print_trace ? std::chrono::high_resolution_clock::now() : std::chrono::high_resolution_clock::time_point{};
+		auto t_pb_start = (settings.print_trace && ::minedotcpp::debug::trace_active) ? std::chrono::high_resolution_clock::now() : std::chrono::high_resolution_clock::time_point{};
 		// Move the expensive fields to avoid deep-copying valid_combinations (each
 		// holds a point_map). Keep verdicts/probabilities intact on b because the
 		// caller in solve_separation still reads them after solve_border returns.
@@ -236,7 +245,7 @@ void solver_service_separation::solve_border(solver_map& m, border& b, bool allo
 		pushed.probabilities = b.probabilities;
 		pushed.verdicts = b.verdicts;
 		pushed.solved_fully = b.solved_fully;
-		if (settings.print_trace)
+		if ((settings.print_trace && ::minedotcpp::debug::trace_active))
 		{
 			auto pb_us = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now() - t_pb_start).count();
 			printf("[trace]   borders.push_back(move): combos=%zu, time=%lldus\n",
@@ -254,7 +263,7 @@ public:
 
 void solver_service_separation::try_solve_border_by_partial_borders(solver_map& m, border& b) const
 {
-	auto t_start = settings.print_trace ? std::chrono::high_resolution_clock::now() : std::chrono::high_resolution_clock::time_point{};
+	auto t_start = (settings.print_trace && ::minedotcpp::debug::trace_active) ? std::chrono::high_resolution_clock::now() : std::chrono::high_resolution_clock::time_point{};
 	long long get_partial_us = 0;
 	long long superset_us = 0;
 	long long solve_us = 0;
@@ -262,7 +271,7 @@ void solver_service_separation::try_solve_border_by_partial_borders(solver_map& 
 	int superset_hits = 0;
 	int solved_count = 0;
 
-	if (settings.print_trace)
+	if ((settings.print_trace && ::minedotcpp::debug::trace_active))
 	{
 		printf("[trace]   partial_solve begin: border_cells=%zu\n", b.cells.size());
 	}
@@ -294,17 +303,17 @@ void solver_service_separation::try_solve_border_by_partial_borders(solver_map& 
 		auto target_coordinate = min.pt;
 		remaining_pts.erase(target_coordinate);
 
-		auto t_gp_start = settings.print_trace ? std::chrono::high_resolution_clock::now() : std::chrono::high_resolution_clock::time_point{};
+		auto t_gp_start = (settings.print_trace && ::minedotcpp::debug::trace_active) ? std::chrono::high_resolution_clock::now() : std::chrono::high_resolution_clock::time_point{};
 		partial_border_data border_data;
 		get_partial_border(b, m, target_coordinate, border_data);
-		if (settings.print_trace)
+		if ((settings.print_trace && ::minedotcpp::debug::trace_active))
 		{
 			get_partial_us += std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now() - t_gp_start).count();
 		}
 		//visualize(border_data.partial_map, { border_data.partial_border }, true);
 		partial_border_data previous_border_data;
 		auto superset = false;
-		auto t_ss_start = settings.print_trace ? std::chrono::high_resolution_clock::now() : std::chrono::high_resolution_clock::time_point{};
+		auto t_ss_start = (settings.print_trace && ::minedotcpp::debug::trace_active) ? std::chrono::high_resolution_clock::now() : std::chrono::high_resolution_clock::time_point{};
 		for (auto& checked : checked_partial_borders)
 		{
 			superset = true;
@@ -326,7 +335,7 @@ void solver_service_separation::try_solve_border_by_partial_borders(solver_map& 
 				break;
 			}
 		}
-		if (settings.print_trace)
+		if ((settings.print_trace && ::minedotcpp::debug::trace_active))
 		{
 			superset_us += std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now() - t_ss_start).count();
 		}
@@ -342,9 +351,9 @@ void solver_service_separation::try_solve_border_by_partial_borders(solver_map& 
 		}
 
 		vector<border> temp;
-		auto t_sb_start = settings.print_trace ? std::chrono::high_resolution_clock::now() : std::chrono::high_resolution_clock::time_point{};
+		auto t_sb_start = (settings.print_trace && ::minedotcpp::debug::trace_active) ? std::chrono::high_resolution_clock::now() : std::chrono::high_resolution_clock::time_point{};
 		solve_border(border_data.partial_map, border_data.partial_border, false, temp);
-		if (settings.print_trace)
+		if ((settings.print_trace && ::minedotcpp::debug::trace_active))
 		{
 			solve_us += std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now() - t_sb_start).count();
 		}
@@ -375,7 +384,7 @@ void solver_service_separation::try_solve_border_by_partial_borders(solver_map& 
 			}
 			if (should_stop_solving(b.verdicts, settings.partial_single_stop_on_no_mine_verdict, settings.partial_single_stop_on_any_verdict, false))
 			{
-				if (settings.print_trace)
+				if ((settings.print_trace && ::minedotcpp::debug::trace_active))
 				{
 					auto total_us = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now() - t_start).count();
 					printf("[trace]   partial_solve end (early): iter=%d, solved=%d, super_hits=%d, get_partial=%lldus, superset=%lldus, solve_sub=%lldus, total=%lldus\n",
@@ -386,7 +395,7 @@ void solver_service_separation::try_solve_border_by_partial_borders(solver_map& 
 		}
 	}
 
-	if (settings.print_trace)
+	if ((settings.print_trace && ::minedotcpp::debug::trace_active))
 	{
 		auto total_us = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now() - t_start).count();
 		printf("[trace]   partial_solve end: iter=%d, solved=%d, super_hits=%d, get_partial=%lldus, superset=%lldus, solve_sub=%lldus, total=%lldus\n",
@@ -627,18 +636,25 @@ void solver_service_separation::calculate_border_probabilities(border& b) const
 		return;
 	}
 	const auto combo_count = static_cast<double>(b.valid_combinations.size());
+	// Transposed iteration: instead of (for each cell, for each combination,
+	// test bit) — which is O(cells * combinations), iterate set bits of each
+	// combination directly. That's O(combinations * avg_mines_per_combo),
+	// typically an order of magnitude fewer operations when combinations
+	// contain only a handful of mines each.
+	std::vector<int> mine_counts(b.cells.size(), 0);
+	for (auto& combination : b.valid_combinations)
+	{
+		std::uint64_t mask = combination.bitmask;
+		while (mask != 0)
+		{
+			int j = std::countr_zero(mask);
+			mask &= mask - 1;
+			++mine_counts[j];
+		}
+	}
 	for (size_t j = 0; j < b.cells.size(); ++j)
 	{
-		const std::uint64_t mask = 1ULL << j;
-		auto mine_count = 0;
-		for (auto& combination : b.valid_combinations)
-		{
-			if (combination.bitmask & mask)
-			{
-				++mine_count;
-			}
-		}
-		b.probabilities[b.cells[j].pt] = static_cast<double>(mine_count) / combo_count;
+		b.probabilities[b.cells[j].pt] = static_cast<double>(mine_counts[j]) / combo_count;
 	}
 }
 

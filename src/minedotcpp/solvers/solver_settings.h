@@ -63,7 +63,29 @@ namespace minedotcpp
 			bool combination_search_gaussian_reduction = true;
 			bool combination_search_gaussian_backtracking = true;
 
+			// When true, partial_solve is skipped for borders that the full
+			// enumeration will handle anyway (effective_size <= give_up_from_size).
+			// In theory partial's verdicts are a subset of what full enum
+			// produces, but in practice partial-found verdicts can shrink the
+			// border (via resplit_on_partial_verdict or direct cell removal)
+			// and make the subsequent full enum cheaper. Empirically on expert
+			// boards this is a small net positive, so the default keeps the
+			// legacy "always run partial" behavior. Flip to true if you want to
+			// skip partial for tractable borders.
+			bool partial_solve_only_when_giving_up = false;
+
+			// Master switch for [trace] output. When false, no traces are emitted and
+			// the (cheap) timing measurements are skipped entirely.
 			bool print_trace = false;
+			// Threshold for emitting per-border traces. Borders whose effective_size
+			// (free variable count after RREF, or raw cell count when reduction fails)
+			// is at least this value emit full downstream traces. Set to 0 to trace
+			// every border.
+			int print_trace_min_effective_size = 20;
+			// Threshold in microseconds for emitting the top-level solve() summary.
+			// solve() calls faster than this are not printed. Set to 0 to print every
+			// solve().
+			long long print_trace_min_solve_us = 100000;
 
 			int variable_mine_count_borders_probabilities_multithread_use_from = 128;
 			int variable_mine_count_borders_probabilities_give_up_from = 131072;
