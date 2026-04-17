@@ -636,25 +636,22 @@ void solver_service_separation::calculate_border_probabilities(border& b) const
 		return;
 	}
 	const auto combo_count = static_cast<double>(b.valid_combinations.size());
-	// Transposed iteration: instead of (for each cell, for each combination,
-	// test bit) — which is O(cells * combinations), iterate set bits of each
-	// combination directly. That's O(combinations * avg_mines_per_combo),
-	// typically an order of magnitude fewer operations when combinations
-	// contain only a handful of mines each.
-	std::vector<int> mine_counts(b.cells.size(), 0);
-	for (auto& combination : b.valid_combinations)
-	{
-		std::uint64_t mask = combination.bitmask;
-		while (mask != 0)
-		{
-			int j = std::countr_zero(mask);
-			mask &= mask - 1;
-			++mine_counts[j];
-		}
-	}
+	// Iter-by-cell: for each cell, scan all combinations testing one bit.
+	// This looks like more operations than iterating set bits per combination,
+	// but the inner loop has no cross-iteration data dependency, so the
+	// compiler vectorizes it (AVX2) and it's typically faster in practice.
 	for (size_t j = 0; j < b.cells.size(); ++j)
 	{
-		b.probabilities[b.cells[j].pt] = static_cast<double>(mine_counts[j]) / combo_count;
+		const std::uint64_t mask = 1ULL << j;
+		auto mine_count = 0;
+		for (auto& combination : b.valid_combinations)
+		{
+			if (combination.bitmask & mask)
+			{
+				++mine_count;
+			}
+		}
+		b.probabilities[b.cells[j].pt] = static_cast<double>(mine_count) / combo_count;
 	}
 }
 

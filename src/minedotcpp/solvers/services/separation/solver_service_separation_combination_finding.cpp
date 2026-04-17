@@ -647,6 +647,108 @@ void solver_service_separation_combination_finding::validate_predictions_backtra
 	backtrack(reduction, border_length, 0, 0, 0, results);
 }
 
+void solver_service_separation_combination_finding::collect_backtrack_jobs(const border_reduction_result& reduction, int border_length, int depth, unsigned int free_val, std::uint64_t prediction, int target_depth, vector<backtrack_job>& jobs) const
+{
+	auto num_vars = border_length;
+
+	if (depth == target_depth)
+	{
+		jobs.push_back({ depth, free_val, prediction });
+		return;
+	}
+
+	for (unsigned int bit = 0; bit <= 1; bit++)
+	{
+		unsigned int next_free_val = free_val;
+		std::uint64_t next_prediction = prediction;
+
+		if (bit)
+		{
+			next_free_val |= (1u << depth);
+			next_prediction |= (1ULL << reduction.free_variable_indices[depth]);
+		}
+
+		bool valid = true;
+		std::uint64_t dep_bits = 0;
+		for (auto pivot_row : reduction.check_at_depth[depth])
+		{
+			int value = reduction.matrix[pivot_row][num_vars];
+			for (int k = 0; k <= depth; k++)
+			{
+				if (next_free_val & (1u << k))
+				{
+					value -= reduction.matrix[pivot_row][reduction.free_variable_indices[k]];
+				}
+			}
+
+			if (value != 0 && value != 1)
+			{
+				valid = false;
+				break;
+			}
+			if (value == 1)
+			{
+				dep_bits |= (1ULL << reduction.pivot_columns[pivot_row]);
+			}
+		}
+
+		if (valid)
+		{
+			collect_backtrack_jobs(reduction, border_length, depth + 1, next_free_val, next_prediction | dep_bits, target_depth, jobs);
+		}
+	}
+}
+
+void solver_service_separation_combination_finding::thr_pool_validate_predictions_backtracking(const border_reduction_result& reduction, int border_length, vector<std::uint64_t>& results) const
+{
+	auto num_free = static_cast<int>(reduction.free_variable_indices.size());
+	auto thread_count = settings.valid_combination_search_multithread_thread_count;
+
+	// Pick a split depth that produces enough tasks to keep threads busy even
+	// after pruning. log2(thread_count) + 1 gives headroom for imbalance.
+	int target_depth = 1;
+	int tasks = 2;
+	while (tasks < thread_count * 2 && target_depth < num_free)
+	{
+		target_depth++;
+		tasks <<= 1;
+	}
+
+	vector<backtrack_job> jobs;
+	collect_backtrack_jobs(reduction, border_length, 0, 0, 0, target_depth, jobs);
+
+	if (jobs.empty())
+	{
+		return;
+	}
+
+	// Each job collects into its own local vector to avoid mutex contention
+	// on the hot path. We merge at the end.
+	vector<vector<std::uint64_t>> local_results(jobs.size());
+	vector<future<void>> futures;
+	futures.reserve(jobs.size());
+	for (size_t i = 0; i < jobs.size(); i++)
+	{
+		const auto& job = jobs[i];
+		futures.emplace_back(thr_pool->push([this, &reduction, border_length, job, &local_results, i](int)
+		{
+			backtrack(reduction, border_length, job.depth, job.free_val, job.prediction, local_results[i]);
+		}));
+	}
+	for (auto& f : futures)
+	{
+		f.get();
+	}
+
+	size_t total = 0;
+	for (auto& lr : local_results) total += lr.size();
+	results.reserve(results.size() + total);
+	for (auto& lr : local_results)
+	{
+		results.insert(results.end(), lr.begin(), lr.end());
+	}
+}
+
 void solver_service_separation_combination_finding::thr_pool_validate_predictions_reduced(const border_reduction_result& reduction, int border_length, vector<std::uint64_t>& results, unsigned int total_free) const
 {
 	auto thread_count = settings.valid_combination_search_multithread_thread_count;
@@ -687,14 +789,13 @@ void solver_service_separation_combination_finding::find_valid_border_cell_combi
 	if ((settings.print_trace && ::minedotcpp::debug::trace_active))
 	{
 		const char* strategy;
+		const bool use_mt = settings.valid_combination_search_multithread && reduction.free_count >= settings.valid_combination_search_multithread_use_from_size;
 		if (use_reduced)
 		{
 			if (settings.combination_search_gaussian_backtracking && !reduction.check_at_depth.empty())
-				strategy = "reduced_backtracking";
-			else if (settings.valid_combination_search_multithread && reduction.free_count >= settings.valid_combination_search_multithread_use_from_size)
-				strategy = "reduced_flat_mt";
+				strategy = use_mt ? "reduced_backtracking_mt" : "reduced_backtracking";
 			else
-				strategy = "reduced_flat";
+				strategy = use_mt ? "reduced_flat_mt" : "reduced_flat";
 		}
 		else
 		{
@@ -714,7 +815,14 @@ void solver_service_separation_combination_finding::find_valid_border_cell_combi
 	{
 		if (settings.combination_search_gaussian_backtracking && !reduction.check_at_depth.empty())
 		{
-			validate_predictions_backtracking(reduction, static_cast<int>(border_length), results);
+			if (settings.valid_combination_search_multithread && reduction.free_count >= settings.valid_combination_search_multithread_use_from_size)
+			{
+				thr_pool_validate_predictions_backtracking(reduction, static_cast<int>(border_length), results);
+			}
+			else
+			{
+				validate_predictions_backtracking(reduction, static_cast<int>(border_length), results);
+			}
 		}
 		else
 		{

@@ -72,6 +72,18 @@ namespace minedotcpp
 				void precompute_backtracking_depths(border_reduction_result& reduction) const;
 				void validate_predictions_backtracking(const border_reduction_result& reduction, int border_length, std::vector<std::uint64_t>& results) const;
 				void backtrack(const border_reduction_result& reduction, int border_length, int depth, unsigned int free_val, std::uint64_t prediction, std::vector<std::uint64_t>& results) const;
+
+				// Multi-threaded backtracking: expand the recursion to a split depth,
+				// producing one subtree job per surviving prefix, then dispatch
+				// each subtree to the thread pool.
+				struct backtrack_job
+				{
+					int depth;
+					unsigned int free_val;
+					std::uint64_t prediction;
+				};
+				void collect_backtrack_jobs(const border_reduction_result& reduction, int border_length, int depth, unsigned int free_val, std::uint64_t prediction, int target_depth, std::vector<backtrack_job>& jobs) const;
+				void thr_pool_validate_predictions_backtracking(const border_reduction_result& reduction, int border_length, std::vector<std::uint64_t>& results) const;
 			};
 		}
 	}
