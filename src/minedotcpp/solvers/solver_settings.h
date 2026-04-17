@@ -63,6 +63,8 @@ namespace minedotcpp
 			bool combination_search_gaussian_reduction = true;
 			bool combination_search_gaussian_backtracking = true;
 
+			bool print_trace = false;
+
 			int variable_mine_count_borders_probabilities_multithread_use_from = 128;
 			int variable_mine_count_borders_probabilities_give_up_from = 131072;
 

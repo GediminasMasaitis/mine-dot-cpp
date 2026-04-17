@@ -3,6 +3,8 @@
 #include <sstream>
 #include <fstream>
 #include <filesystem>
+#include <algorithm>
+#include <vector>
 #include "mapio/text_map_parser.h"
 #include "mapio/text_map_visualizer.h"
 #include "solvers/solver.h"
@@ -162,10 +164,7 @@ void on_iteration_impl(int benchmark_index, map& m, point_map<solver_result>& re
 
 void on_end_impl(minedotcpp::benchmarking::benchmark_entry& entry)
 {
-	//auto fs = ofstream("C:\\Temp\\map_end.txt", ios::app);
-	//fs << entry.map_index << " " << entry.solved << endl;
-	//fs.close();
-	//printf("Map: %5i, Success: %s, Time taken: %4i ms,\n", entry.map_index, entry.solved ? "Y" : "N", entry.total_duration / 1000);
+	printf("Map: %5i, Success: %s, Time taken: %8i us\n", entry.map_index, entry.solved ? "Y" : "N", static_cast<int>(entry.total_duration / 1000));
 }
 
 void benchmark()
@@ -178,7 +177,7 @@ void benchmark()
 	};
 
 	benchmark_config configs[] = {
-		{"WITHOUT gaussian reduction",              false, false},
+		//{"WITHOUT gaussian reduction",              false, false},
 		{"WITH gaussian reduction (flat)",           true, false},
 		{"WITH gaussian reduction (backtracking)",   true,  true},
 	};
@@ -200,39 +199,47 @@ void benchmark()
 		settings.mine_count_solve = true;
 		settings.mine_count_solve_non_border = true;
 		settings.give_up_from_size = 28;
-		settings.partial_solve_from_size = 28;
+		settings.partial_solve_from_size = 24;
 		settings.partial_optimal_size = 24;
 		settings.valid_combination_search_multithread = true;
 		settings.valid_combination_search_open_cl = false;
 		settings.valid_combination_search_open_cl_allow_loop_break = false;
 		settings.combination_search_gaussian_reduction = config.gaussian_reduction;
 		settings.combination_search_gaussian_backtracking = config.gaussian_backtracking;
+		settings.print_trace = true;
 
 		auto solvr = solver(settings);
 
-		for (auto mineCount = 99; mineCount < 100; mineCount++)
+		auto mineCount = 99;
+		auto group = minedotcpp::benchmarking::benchmark_density_group();
+		auto count = 1000;
+		const auto width = 30;
+		const auto heigth = 16;
+		benchmarker.benchmark_multiple(solvr, width, heigth, mineCount, count, group);
+		cout << "Density: " << group.density << endl;
+		size_t sum = 0;
+		auto success_count = 0;
+		std::vector<size_t> durations;
+		durations.reserve(group.entries.size());
+		for (auto& entry : group.entries)
 		{
-			auto group = minedotcpp::benchmarking::benchmark_density_group();
-			auto count = 100;
-			const auto width = 30;
-			const auto heigth = 16;
-			benchmarker.benchmark_multiple(solvr, width, heigth, mineCount, count, group);
-			cout << "Density: " << group.density << endl;
-			size_t sum = 0;
-			auto success_count = 0;
-			for (auto& entry : group.entries)
+			sum += entry.total_duration;
+			durations.push_back(entry.total_duration);
+			if (entry.solved)
 			{
-				sum += entry.total_duration;
-				if (entry.solved)
-				{
-					success_count++;
-				}
+				success_count++;
 			}
-			auto success_rate = (static_cast<double>(success_count) / count) * 100;
-			const auto avg = (sum / count);
-			cout << "Avg: " << (avg / 1000) << " us" << endl;
-			cout << "Success rate: " << success_rate << "%" << endl;
 		}
+		std::sort(durations.begin(), durations.end());
+		auto success_rate = (static_cast<double>(success_count) / count) * 100;
+		const auto avg = (sum / count);
+		auto pct = [&](double p) { return durations[static_cast<size_t>(durations.size() * p)] / 1000; };
+		cout << "Avg:  " << (avg / 1000) << " us" << endl;
+		cout << "p50:  " << pct(0.50) << " us" << endl;
+		cout << "p90:  " << pct(0.90) << " us" << endl;
+		cout << "p99:  " << pct(0.99) << " us" << endl;
+		cout << "Max:  " << (durations.back() / 1000) << " us" << endl;
+		cout << "Success rate: " << success_rate << "%" << endl;
 	}
 }
 

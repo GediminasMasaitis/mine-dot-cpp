@@ -4,6 +4,8 @@
 #include "services/separation/solver_service_separation.h"
 #include "services/guessing/solver_service_guessing.h"
 #include "services/gaussian/solver_service_gaussian.h"
+#include <chrono>
+#include <cstdio>
 
 using namespace minedotcpp;
 using namespace solvers;
@@ -13,6 +15,8 @@ using namespace std;
 
 void solver::solve(const map& base_map, point_map<solver_result>& results) const
 {
+	auto t_start = settings.print_trace ? chrono::high_resolution_clock::now() : chrono::high_resolution_clock::time_point{};
+
 	solver_map m;
 	m.init_from(base_map);
 	if(settings.mine_count_ignore_completely)
@@ -23,6 +27,7 @@ void solver::solve(const map& base_map, point_map<solver_result>& results) const
 	point_map<double> probabilities;
 	point_map<bool> verdicts;
 
+	auto t_init = settings.print_trace ? chrono::high_resolution_clock::now() : chrono::high_resolution_clock::time_point{};
 
 	if(settings.trivial_solve)
 	{
@@ -35,6 +40,8 @@ void solver::solve(const map& base_map, point_map<solver_result>& results) const
 		}
 	}
 
+	auto t_trivial = settings.print_trace ? chrono::high_resolution_clock::now() : chrono::high_resolution_clock::time_point{};
+
 	if(settings.gaussian_solve)
 	{
 		auto gaussian_service = solver_service_gaussian(settings, thr_pool);
@@ -46,11 +53,34 @@ void solver::solve(const map& base_map, point_map<solver_result>& results) const
 		}
 	}
 
+	auto t_gauss = settings.print_trace ? chrono::high_resolution_clock::now() : chrono::high_resolution_clock::time_point{};
+
 	if (settings.separation_solve)
 	{
 		separation_service.solve_separation(m, probabilities, verdicts);
 	}
+
+	auto t_sep = settings.print_trace ? chrono::high_resolution_clock::now() : chrono::high_resolution_clock::time_point{};
+
 	get_final_results(m, probabilities, verdicts, results);
+
+	if (settings.print_trace)
+	{
+		auto t_end = chrono::high_resolution_clock::now();
+		auto init_us = chrono::duration_cast<chrono::microseconds>(t_init - t_start).count();
+		auto trivial_us = chrono::duration_cast<chrono::microseconds>(t_trivial - t_init).count();
+		auto gauss_us = chrono::duration_cast<chrono::microseconds>(t_gauss - t_trivial).count();
+		auto sep_us = chrono::duration_cast<chrono::microseconds>(t_sep - t_gauss).count();
+		auto final_us = chrono::duration_cast<chrono::microseconds>(t_end - t_sep).count();
+		auto total_us = chrono::duration_cast<chrono::microseconds>(t_end - t_start).count();
+		printf("[trace] solve() total=%lldus: init=%lldus, trivial=%lldus, gaussian=%lldus, separation=%lldus, final=%lldus\n",
+			static_cast<long long>(total_us),
+			static_cast<long long>(init_us),
+			static_cast<long long>(trivial_us),
+			static_cast<long long>(gauss_us),
+			static_cast<long long>(sep_us),
+			static_cast<long long>(final_us));
+	}
 }
 
 void solver::get_final_results(solver_map& m, point_map<double>& probabilities, point_map<bool>& verdicts, point_map<solver_result>& results) const

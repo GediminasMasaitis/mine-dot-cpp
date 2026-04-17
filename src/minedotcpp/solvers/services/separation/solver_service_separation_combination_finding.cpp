@@ -4,6 +4,7 @@
 #include <thread>
 #include <mutex>
 #include <queue>
+#include <chrono>
 #include "solver_service_separation_combination_finding.h"
 #ifdef ENABLE_OPEN_CL
 #endif
@@ -444,6 +445,8 @@ border_reduction_result solver_service_separation_combination_finding::reduce_bo
 		return result;
 	}
 
+	auto t_start = settings.print_trace ? chrono::high_resolution_clock::now() : chrono::high_resolution_clock::time_point{};
+
 	vector<vector<int>> matrix;
 	build_border_constraint_matrix(map, border, matrix);
 
@@ -452,11 +455,28 @@ border_reduction_result solver_service_separation_combination_finding::reduce_bo
 		return result;
 	}
 
+	auto t_build = settings.print_trace ? chrono::high_resolution_clock::now() : chrono::high_resolution_clock::time_point{};
+
 	compute_rref(matrix, static_cast<int>(border.cells.size()), result);
+
+	auto t_rref = settings.print_trace ? chrono::high_resolution_clock::now() : chrono::high_resolution_clock::time_point{};
 
 	if (result.valid && settings.combination_search_gaussian_backtracking)
 	{
 		precompute_backtracking_depths(result);
+	}
+
+	if (settings.print_trace)
+	{
+		auto t_end = chrono::high_resolution_clock::now();
+		auto build_us = chrono::duration_cast<chrono::microseconds>(t_build - t_start).count();
+		auto rref_us = chrono::duration_cast<chrono::microseconds>(t_rref - t_build).count();
+		auto depths_us = chrono::duration_cast<chrono::microseconds>(t_end - t_rref).count();
+		printf("[trace]   reduce_border: matrix_rows=%d, build=%lldus, rref=%lldus, depths=%lldus\n",
+			static_cast<int>(matrix.size()),
+			static_cast<long long>(build_us),
+			static_cast<long long>(rref_us),
+			static_cast<long long>(depths_us));
 	}
 
 	return result;
@@ -663,6 +683,32 @@ void solver_service_separation_combination_finding::find_valid_border_cell_combi
 
 	bool use_reduced = reduction.valid && reduction.free_count < static_cast<int>(border_length);
 
+	if (settings.print_trace)
+	{
+		const char* strategy;
+		if (use_reduced)
+		{
+			if (settings.combination_search_gaussian_backtracking && !reduction.check_at_depth.empty())
+				strategy = "reduced_backtracking";
+			else if (settings.valid_combination_search_multithread && reduction.free_count >= settings.valid_combination_search_multithread_use_from_size)
+				strategy = "reduced_flat_mt";
+			else
+				strategy = "reduced_flat";
+		}
+		else
+		{
+			if (settings.valid_combination_search_multithread && border_length >= settings.valid_combination_search_multithread_use_from_size)
+				strategy = "bruteforce_mt";
+			else
+				strategy = "bruteforce";
+		}
+		printf("[trace]   find_combinations: border_len=%d, free=%d, strategy=%s, total=%llu\n",
+			static_cast<int>(border_length), reduction.free_count, strategy,
+			use_reduced ? (1ULL << reduction.free_count) : (1ULL << border_length));
+	}
+
+	auto t_enum_start = settings.print_trace ? chrono::high_resolution_clock::now() : chrono::high_resolution_clock::time_point{};
+
 	if (use_reduced)
 	{
 		if (settings.combination_search_gaussian_backtracking && !reduction.check_at_depth.empty())
@@ -713,6 +759,11 @@ void solver_service_separation_combination_finding::find_valid_border_cell_combi
 		}
 	}
 
+	auto t_enum_end = settings.print_trace ? chrono::high_resolution_clock::now() : chrono::high_resolution_clock::time_point{};
+
+	size_t raw_results_count = results.size();
+	size_t filtered_out = 0;
+
 	for (const auto& prediction : results)
 	{
 		if (solver_map.remaining_mine_count > 0)
@@ -720,10 +771,12 @@ void solver_service_separation_combination_finding::find_valid_border_cell_combi
 			const auto bits_set = find_hamming_weight(prediction);
 			if (bits_set > solver_map.remaining_mine_count)
 			{
+				++filtered_out;
 				continue;
 			}
 			if (all_remaining_cells_in_border && bits_set != solver_map.remaining_mine_count)
 			{
+				++filtered_out;
 				continue;
 			}
 		}
@@ -741,5 +794,16 @@ void solver_service_separation_combination_finding::find_valid_border_cell_combi
 			}
 		}
 		border.valid_combinations.emplace_back(mine_count, predictions);
+	}
+
+	if (settings.print_trace)
+	{
+		auto t_post_end = chrono::high_resolution_clock::now();
+		auto enum_us = chrono::duration_cast<chrono::microseconds>(t_enum_end - t_enum_start).count();
+		auto post_us = chrono::duration_cast<chrono::microseconds>(t_post_end - t_enum_end).count();
+		printf("[trace]   find_combinations done: raw=%zu, filtered=%zu, kept=%zu, enum=%lldus, post=%lldus\n",
+			raw_results_count, filtered_out, border.valid_combinations.size(),
+			static_cast<long long>(enum_us),
+			static_cast<long long>(post_us));
 	}
 }
