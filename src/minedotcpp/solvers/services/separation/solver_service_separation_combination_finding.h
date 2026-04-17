@@ -5,6 +5,7 @@
 #include "../solver_service_base.h"
 #include <mutex>
 #include <array>
+#include <cstdint>
 #ifdef ENABLE_OPEN_CL
 #define CL_USE_DEPRECATED_OPENCL_1_2_APIS
 #include <CL/cl.hpp>
@@ -57,20 +58,20 @@ namespace minedotcpp
 				void cl_build_find_combination_program();
 				void cl_validate_predictions(unsigned char map_size, std::vector<unsigned char>& map, ClResultArr& results, int& result_count, unsigned total) const;
 #endif
-				int find_hamming_weight(int i) const;
+				int find_hamming_weight(std::uint64_t i) const;
 				void get_combination_search_map(solver_map& solver_map, border& border, std::vector<unsigned char>& m, unsigned char& map_size) const;
-				void thr_validate_predictions(unsigned char map_size, std::vector<unsigned char>& m, std::vector<unsigned>& results, unsigned total) const;
-				void thr_pool_validate_predictions(unsigned char map_size, std::vector<unsigned char>& m, std::vector<unsigned>& results, unsigned total) const;
-				void validate_predictions(const unsigned char map_size, std::vector<unsigned char>& m, std::vector<unsigned>& results, const unsigned min, const unsigned max, std::mutex* sync) const;
+				void thr_validate_predictions(unsigned char map_size, std::vector<unsigned char>& m, std::vector<std::uint64_t>& results, unsigned total) const;
+				void thr_pool_validate_predictions(unsigned char map_size, std::vector<unsigned char>& m, std::vector<std::uint64_t>& results, unsigned total) const;
+				void validate_predictions(const unsigned char map_size, std::vector<unsigned char>& m, std::vector<std::uint64_t>& results, const unsigned min, const unsigned max, std::mutex* sync) const;
 
 				void build_border_constraint_matrix(solver_map& map, border& border, std::vector<std::vector<int>>& matrix) const;
 				void compute_rref(std::vector<std::vector<int>>& matrix, int num_vars, border_reduction_result& result) const;
-				void validate_predictions_reduced(const border_reduction_result& reduction, int border_length, std::vector<unsigned int>& results, unsigned int min_free, unsigned int max_free, std::mutex* sync) const;
-				void thr_pool_validate_predictions_reduced(const border_reduction_result& reduction, int border_length, std::vector<unsigned int>& results, unsigned int total_free) const;
+				void validate_predictions_reduced(const border_reduction_result& reduction, int border_length, std::vector<std::uint64_t>& results, unsigned int min_free, unsigned int max_free, std::mutex* sync) const;
+				void thr_pool_validate_predictions_reduced(const border_reduction_result& reduction, int border_length, std::vector<std::uint64_t>& results, unsigned int total_free) const;
 
 				void precompute_backtracking_depths(border_reduction_result& reduction) const;
-				void validate_predictions_backtracking(const border_reduction_result& reduction, int border_length, std::vector<unsigned int>& results) const;
-				void backtrack(const border_reduction_result& reduction, int border_length, int depth, unsigned int free_val, unsigned int prediction, std::vector<unsigned int>& results) const;
+				void validate_predictions_backtracking(const border_reduction_result& reduction, int border_length, std::vector<std::uint64_t>& results) const;
+				void backtrack(const border_reduction_result& reduction, int border_length, int depth, unsigned int free_val, std::uint64_t prediction, std::vector<std::uint64_t>& results) const;
 			};
 		}
 	}

@@ -5,6 +5,8 @@
 #include <mutex>
 #include <queue>
 #include <chrono>
+#include <bit>
+#include <cstdint>
 #include "solver_service_separation_combination_finding.h"
 #ifdef ENABLE_OPEN_CL
 #endif
@@ -146,7 +148,7 @@ void solver_service_separation_combination_finding::cl_validate_predictions(unsi
 	auto read_err = queue.enqueueReadBuffer(results_buf, CL_TRUE, 0, sizeof(int) * results.size(), results.data());
 }
 #endif
-void solver_service_separation_combination_finding::validate_predictions(const unsigned char map_size, vector<unsigned char>& map, vector<unsigned int>& results, const unsigned int min, const unsigned int max, mutex* sync) const
+void solver_service_separation_combination_finding::validate_predictions(const unsigned char map_size, vector<unsigned char>& map, vector<std::uint64_t>& results, const unsigned int min, const unsigned int max, mutex* sync) const
 {
 	for (unsigned int prediction = min; prediction < max; prediction++)
 	{
@@ -171,7 +173,7 @@ void solver_service_separation_combination_finding::validate_predictions(const u
 					break;
 				default:
 				{
-					if ((prediction & (1 << (neighbour >> 2))) != 0)
+					if ((prediction & (1u << (neighbour >> 2))) != 0)
 					{
 						++neighbours_with_mine;
 					}
@@ -202,7 +204,7 @@ void solver_service_separation_combination_finding::validate_predictions(const u
 	}
 }
 
-void solver_service_separation_combination_finding::thr_validate_predictions(unsigned char map_size, vector<unsigned char>& m, vector<unsigned int>& results, unsigned int total) const
+void solver_service_separation_combination_finding::thr_validate_predictions(unsigned char map_size, vector<unsigned char>& m, vector<std::uint64_t>& results, unsigned int total) const
 {
 	auto thread_count = thread::hardware_concurrency();
 	auto thread_load = total / thread_count;
@@ -229,7 +231,7 @@ void solver_service_separation_combination_finding::thr_validate_predictions(uns
 	}
 }
 
-void solver_service_separation_combination_finding::thr_pool_validate_predictions(unsigned char map_size, vector<unsigned char>& m, vector<unsigned int>& results, unsigned int total) const
+void solver_service_separation_combination_finding::thr_pool_validate_predictions(unsigned char map_size, vector<unsigned char>& m, vector<std::uint64_t>& results, unsigned int total) const
 {
 	auto thread_count = settings.valid_combination_search_multithread_thread_count;
 	auto futures = vector<future<void>>();
@@ -256,11 +258,9 @@ void solver_service_separation_combination_finding::thr_pool_validate_prediction
 	}
 }
 
-int solver_service_separation_combination_finding::find_hamming_weight(int i) const
+int solver_service_separation_combination_finding::find_hamming_weight(std::uint64_t i) const
 {
-	i = i - ((i >> 1) & 0x55555555);
-	i = (i & 0x33333333) + ((i >> 2) & 0x33333333);
-	return (((i + (i >> 4)) & 0x0F0F0F0F) * 0x01010101) >> 24;
+	return std::popcount(i);
 }
 
 void solver_service_separation_combination_finding::get_combination_search_map(solver_map& solver_map, border& border, vector<unsigned char>& m, unsigned char& map_size) const
@@ -482,7 +482,7 @@ border_reduction_result solver_service_separation_combination_finding::reduce_bo
 	return result;
 }
 
-void solver_service_separation_combination_finding::validate_predictions_reduced(const border_reduction_result& reduction, int border_length, vector<unsigned int>& results, unsigned int min_free, unsigned int max_free, mutex* sync) const
+void solver_service_separation_combination_finding::validate_predictions_reduced(const border_reduction_result& reduction, int border_length, vector<std::uint64_t>& results, unsigned int min_free, unsigned int max_free, mutex* sync) const
 {
 	auto num_pivots = static_cast<int>(reduction.pivot_columns.size());
 	auto num_free = static_cast<int>(reduction.free_variable_indices.size());
@@ -490,14 +490,14 @@ void solver_service_separation_combination_finding::validate_predictions_reduced
 
 	for (unsigned int free_val = min_free; free_val < max_free; free_val++)
 	{
-		unsigned int prediction = 0;
+		std::uint64_t prediction = 0;
 		bool valid = true;
 
 		for (int i = 0; i < num_free; i++)
 		{
 			if (free_val & (1u << i))
 			{
-				prediction |= (1u << reduction.free_variable_indices[i]);
+				prediction |= (1ULL << reduction.free_variable_indices[i]);
 			}
 		}
 
@@ -519,7 +519,7 @@ void solver_service_separation_combination_finding::validate_predictions_reduced
 			}
 			if (value == 1)
 			{
-				prediction |= (1u << reduction.pivot_columns[i]);
+				prediction |= (1ULL << reduction.pivot_columns[i]);
 			}
 		}
 
@@ -587,7 +587,7 @@ void solver_service_separation_combination_finding::precompute_backtracking_dept
 	}
 }
 
-void solver_service_separation_combination_finding::backtrack(const border_reduction_result& reduction, int border_length, int depth, unsigned int free_val, unsigned int prediction, vector<unsigned int>& results) const
+void solver_service_separation_combination_finding::backtrack(const border_reduction_result& reduction, int border_length, int depth, unsigned int free_val, std::uint64_t prediction, vector<std::uint64_t>& results) const
 {
 	auto num_free = static_cast<int>(reduction.free_variable_indices.size());
 	auto num_vars = border_length;
@@ -601,17 +601,17 @@ void solver_service_separation_combination_finding::backtrack(const border_reduc
 	for (unsigned int bit = 0; bit <= 1; bit++)
 	{
 		unsigned int next_free_val = free_val;
-		unsigned int next_prediction = prediction;
+		std::uint64_t next_prediction = prediction;
 
 		if (bit)
 		{
 			next_free_val |= (1u << depth);
-			next_prediction |= (1u << reduction.free_variable_indices[depth]);
+			next_prediction |= (1ULL << reduction.free_variable_indices[depth]);
 		}
 
 		// Check all dependent variables that become fully determined at this depth
 		bool valid = true;
-		unsigned int dep_bits = 0;
+		std::uint64_t dep_bits = 0;
 		for (auto pivot_row : reduction.check_at_depth[depth])
 		{
 			int value = reduction.matrix[pivot_row][num_vars];
@@ -630,7 +630,7 @@ void solver_service_separation_combination_finding::backtrack(const border_reduc
 			}
 			if (value == 1)
 			{
-				dep_bits |= (1u << reduction.pivot_columns[pivot_row]);
+				dep_bits |= (1ULL << reduction.pivot_columns[pivot_row]);
 			}
 		}
 
@@ -641,12 +641,12 @@ void solver_service_separation_combination_finding::backtrack(const border_reduc
 	}
 }
 
-void solver_service_separation_combination_finding::validate_predictions_backtracking(const border_reduction_result& reduction, int border_length, vector<unsigned int>& results) const
+void solver_service_separation_combination_finding::validate_predictions_backtracking(const border_reduction_result& reduction, int border_length, vector<std::uint64_t>& results) const
 {
 	backtrack(reduction, border_length, 0, 0, 0, results);
 }
 
-void solver_service_separation_combination_finding::thr_pool_validate_predictions_reduced(const border_reduction_result& reduction, int border_length, vector<unsigned int>& results, unsigned int total_free) const
+void solver_service_separation_combination_finding::thr_pool_validate_predictions_reduced(const border_reduction_result& reduction, int border_length, vector<std::uint64_t>& results, unsigned int total_free) const
 {
 	auto thread_count = settings.valid_combination_search_multithread_thread_count;
 	auto futures = vector<future<void>>();
@@ -678,7 +678,7 @@ static ClResultArr global_results = {};
 void solver_service_separation_combination_finding::find_valid_border_cell_combinations(solver_map& solver_map, border& border, const border_reduction_result& reduction) const
 {
 	auto border_length = border.cells.size();
-	auto results = vector<unsigned int>();
+	auto results = vector<std::uint64_t>();
 	auto all_remaining_cells_in_border = solver_map.undecided_count == border_length;
 
 	bool use_reduced = reduction.valid && reduction.free_count < static_cast<int>(border_length);
@@ -786,7 +786,7 @@ void solver_service_separation_combination_finding::find_valid_border_cell_combi
 		for (unsigned int j = 0; j < border_length; j++)
 		{
 			auto& pt = border.cells[j].pt;
-			auto has_mine = (prediction & (1 << j)) > 0;
+			auto has_mine = (prediction & (1ULL << j)) != 0;
 			predictions[pt] = has_mine;
 			if (has_mine)
 			{
