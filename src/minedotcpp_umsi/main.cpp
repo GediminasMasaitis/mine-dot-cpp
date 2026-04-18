@@ -241,20 +241,48 @@ static void handle_setoption(const string& line)
 	cout << "error unknown option: " << name << endl;
 }
 
-static void handle_position()
+static void handle_position(const string& line)
 {
-	// Accumulate lines verbatim until `end`. The text_map_parser is
-	// tolerant of the trailing newline and the optional `mN` mine-count
-	// marker, so we don't need to pre-process.
-	string line;
+	// Two accepted forms:
+	//   1. `position` on its own, followed by rows then a terminating
+	//      `end` line. Natural for typing by hand.
+	//   2. `position <row>;<row>;...;<row>` on a single line, using `;`
+	//      as a row separator. Matches the convention used elsewhere in
+	//      this codebase (MapTextVisualizers and the GUI's CLI arg
+	//      handler both do the same `;` -> newline swap). Natural for
+	//      scripts and protocol traces.
+	// Either way we end up with a buffer of newline-separated rows,
+	// which is exactly what text_map_parser wants.
 	string map_text;
-	while (getline(cin, line))
+
+	auto cmd_end = line.find_first_of(" \t");
+	string trailing;
+	if (cmd_end != string::npos)
 	{
-		trim_cr(line);
-		if (line == "end") break;
-		map_text += line;
-		map_text += '\n';
+		auto start = line.find_first_not_of(" \t", cmd_end);
+		if (start != string::npos) trailing = line.substr(start);
 	}
+
+	if (!trailing.empty())
+	{
+		// Single-line form: swap `;` for newlines.
+		map_text.reserve(trailing.size() + 1);
+		for (char c : trailing) map_text += (c == ';') ? '\n' : c;
+		if (map_text.back() != '\n') map_text += '\n';
+	}
+	else
+	{
+		// Multi-line form: read rows until `end`.
+		string next;
+		while (getline(cin, next))
+		{
+			trim_cr(next);
+			if (next == "end") break;
+			map_text += next;
+			map_text += '\n';
+		}
+	}
+
 	g_position_text = std::move(map_text);
 }
 
@@ -346,7 +374,7 @@ int main()
 		if (cmd == "umsi")           handle_umsi();
 		else if (cmd == "isready")   cout << "readyok" << endl;
 		else if (cmd == "setoption") handle_setoption(line);
-		else if (cmd == "position")  handle_position();
+		else if (cmd == "position")  handle_position(line);
 		else if (cmd == "go")        handle_go();
 		else if (cmd == "quit")      return 0;
 		else if (cmd[0] == '#')      continue;       // comment line
