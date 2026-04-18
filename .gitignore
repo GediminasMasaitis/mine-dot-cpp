@@ -4,12 +4,16 @@ enc_temp_folder
 CMakeCache.txt
 CMakeFiles
 CMakeScripts
-Makefile
 cmake_install.cmake
 install_manifest.txt
 CTestTestfile.cmake
 
 build
+build-windows
+build-linux
 build_static
 bench_error.txt
 bench_output.txt
+
+# Binary produced by the top-level Makefile (see ./Makefile)
+/minedotcpp_umsi

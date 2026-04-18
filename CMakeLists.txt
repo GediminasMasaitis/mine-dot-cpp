@@ -13,3 +13,4 @@ set(shared true)
 
 add_subdirectory(src/minedotcpp)
 add_subdirectory(src/minedotcpp_testcli)
+add_subdirectory(src/minedotcpp_umsi)
