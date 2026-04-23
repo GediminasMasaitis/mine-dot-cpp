@@ -17,8 +17,12 @@ namespace minedotcpp
 		class MINE_API solver : private services::solver_service_base
 		{
 		public:
-			explicit solver(solver_settings& settings)
-				: solver_service_base(settings, new ctpl::thread_pool(std::thread::hardware_concurrency()))
+			// thread_count sizes the internal thread pool. 0 (default) = one
+			// thread per hardware core — sensible for a standalone solver.
+			// Benchmarks running N solvers in parallel should pass
+			// hw_conc / N so the N pools together don't oversubscribe.
+			explicit solver(solver_settings& settings, int thread_count = 0)
+				: solver_service_base(settings, new ctpl::thread_pool(thread_count > 0 ? thread_count : std::thread::hardware_concurrency()))
 				, separation_service(settings, thr_pool)
 			{
 			}

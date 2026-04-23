@@ -18,8 +18,8 @@ struct solver_handle_impl
 	solver* svc;
 	text_map_parser parser;
 
-	explicit solver_handle_impl(const solver_settings& s)
-		: settings(s), svc(new solver(settings))
+	solver_handle_impl(const solver_settings& s, int thread_count)
+		: settings(s), svc(new solver(settings, thread_count))
 	{
 	}
 
@@ -29,9 +29,9 @@ struct solver_handle_impl
 	}
 };
 
-extern "C" solver_handle MINE_API create_solver(solver_settings settings)
+extern "C" solver_handle MINE_API create_solver(solver_settings settings, int thread_count)
 {
-	return new solver_handle_impl(settings);
+	return new solver_handle_impl(settings, thread_count);
 }
 
 extern "C" void MINE_API destroy_solver(solver_handle handle)

@@ -10,6 +10,8 @@
 // benchmark worker).
 typedef void* solver_handle;
 
-extern "C" solver_handle MINE_API create_solver(minedotcpp::solvers::solver_settings settings);
+// thread_count = 0 → pool size = hardware_concurrency(). Benchmarks running N
+// handles in parallel should pass hw_conc / N to avoid oversubscription.
+extern "C" solver_handle MINE_API create_solver(minedotcpp::solvers::solver_settings settings, int thread_count);
 extern "C" void MINE_API destroy_solver(solver_handle handle);
 extern "C" int MINE_API solve(solver_handle handle, const char* map_str, minedotcpp::solvers::solver_result* results_buffer, int* buffer_size);

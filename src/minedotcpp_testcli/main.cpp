@@ -138,7 +138,7 @@ void solve_from_file(int argc, char* argv[])
 	//settings.mine_count_ignore_completely = true;
 	//settings.guess_if_no_no_mine_verdict = false;
 	//settings.give_up_from_size = 25;
-	auto handle = create_solver(settings);
+	auto handle = create_solver(settings, 0);
 	std::chrono::high_resolution_clock clock;
 	auto results = vector<solver_result>(1024);
 	auto results_size = static_cast<int>(results.size());
@@ -387,7 +387,7 @@ void test_global_api()
 	s.gaussian_solve = false;
 	//s.give_up_from_size = 15;
 	cout << sizeof(solver_result) << endl;
-	auto handle = create_solver(s);
+	auto handle = create_solver(s, 0);
 	auto map_str = R"(###2###1
 ########
 ##3211##
