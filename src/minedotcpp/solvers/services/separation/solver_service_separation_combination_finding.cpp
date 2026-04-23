@@ -776,8 +776,6 @@ void solver_service_separation_combination_finding::thr_pool_validate_prediction
 	}
 }
 
-static ClResultArr global_results = {};
-
 void solver_service_separation_combination_finding::find_valid_border_cell_combinations(solver_map& solver_map, border& border, const border_reduction_result& reduction) const
 {
 	auto border_length = border.cells.size();
@@ -848,12 +846,19 @@ void solver_service_separation_combination_finding::find_valid_border_cell_combi
 #ifdef ENABLE_OPEN_CL
 		if (settings.valid_combination_search_open_cl && border_length >= settings.valid_combination_search_open_cl_use_from_size)
 		{
+			// Lazy-allocate the 256MB scratch so solver instances that never
+			// take the OpenCL path (or are never used at all) don't pay for it.
+			// `new ClResultArr` without parens is default-initialization —
+			// leaves the underlying unsigned ints uninitialized, which is fine
+			// because the kernel fills it and result_count bounds our reads.
+			if (!results_scratch) results_scratch.reset(new ClResultArr);
+			auto& scratch = *results_scratch;
 			int result_count = 0;
-			cl_validate_predictions(map_size, combination_search_map, global_results, result_count, total);
+			cl_validate_predictions(map_size, combination_search_map, scratch, result_count, total);
 			results.reserve(result_count);
 			for (auto i = 0; i < result_count; i++)
 			{
-				results.push_back(global_results[i]);
+				results.push_back(scratch[i]);
 			}
 		}
 		else

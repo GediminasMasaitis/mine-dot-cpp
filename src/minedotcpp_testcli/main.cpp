@@ -138,14 +138,15 @@ void solve_from_file(int argc, char* argv[])
 	//settings.mine_count_ignore_completely = true;
 	//settings.guess_if_no_no_mine_verdict = false;
 	//settings.give_up_from_size = 25;
-	init_solver(settings);
+	auto handle = create_solver(settings);
 	std::chrono::high_resolution_clock clock;
 	auto results = vector<solver_result>(1024);
 	auto results_size = static_cast<int>(results.size());
 	auto visualizer = minedotcpp::mapio::text_map_visualizer();
 	auto str = visualizer.visualize_to_string(test_map);
 	auto start_time = clock.now();
-	solve(str.c_str(), results.data(), &results_size);
+	solve(handle, str.c_str(), results.data(), &results_size);
+	destroy_solver(handle);
 	results.resize(results_size);
 	auto end_time = clock.now();
 	auto diff = end_time - start_time;
@@ -296,7 +297,7 @@ void benchmark()
 
 		auto mineCount = 99;
 		auto group = minedotcpp::benchmarking::benchmark_density_group();
-		auto count = 1000;
+		auto count = 100;
 		const auto width = 30;
 		const auto heigth = 16;
 
@@ -386,7 +387,7 @@ void test_global_api()
 	s.gaussian_solve = false;
 	//s.give_up_from_size = 15;
 	cout << sizeof(solver_result) << endl;
-	init_solver(s);
+	auto handle = create_solver(s);
 	auto map_str = R"(###2###1
 ########
 ##3211##
@@ -397,7 +398,8 @@ void test_global_api()
 ###2###2)";
 	auto results_size = 1024;
 	auto results = vector<solver_result>(results_size);
-	solve(map_str, results.data(), &results_size);
+	solve(handle, map_str, results.data(), &results_size);
+	destroy_solver(handle);
 	results.resize(results_size);
 	dump_results(results);
 

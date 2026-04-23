@@ -1,6 +1,7 @@
 #include "solver_service_separation_mine_counts.h"
 #include <cstdint>
 #include <bit>
+#include <mutex>
 
 using namespace minedotcpp;
 using namespace solvers;
@@ -145,6 +146,10 @@ inline bool solver_service_separation_mine_counts::is_prediction_valid_by_mine_c
 }
 
 static vector<vector<double>> combination_ratios = vector<vector<double>>();
+// Lazy init protected by call_once so two solver handles racing on first use
+// don't both try to resize the shared table. After init the table is
+// effectively read-only, so concurrent reads are safe.
+static once_flag combination_ratios_once;
 
 static void initialize_combination_ratios()
 {
@@ -165,10 +170,7 @@ static void initialize_combination_ratios()
 
 inline static double combination_ratio(int from, int count)
 {
-	if (combination_ratios.size() == 0)
-	{
-		initialize_combination_ratios();
-	}
+	call_once(combination_ratios_once, initialize_combination_ratios);
 	assert(count <= from);
 	return combination_ratios[from][count];
 }

@@ -3,6 +3,7 @@
 #include "../../solver_settings.h"
 #include "../../border.h"
 #include "../solver_service_base.h"
+#include <memory>
 #include <mutex>
 #include <array>
 #include <cstdint>
@@ -53,8 +54,13 @@ namespace minedotcpp
 				cl::Context cl_context;
 				cl::Program cl_find_combination_program;
 
-				
-				
+				// Per-instance OpenCL result buffer, allocated lazily on first
+				// use. Was file-static before, which prevented parallel use
+				// across solver handles. Default-initialized (new ClResultArr,
+				// no parens) to skip zeroing 256MB on construction — the kernel
+				// fills it, result_count bounds what we read out.
+				mutable std::unique_ptr<ClResultArr> results_scratch;
+
 				void cl_build_find_combination_program();
 				void cl_validate_predictions(unsigned char map_size, std::vector<unsigned char>& map, ClResultArr& results, int& result_count, unsigned total) const;
 #endif
